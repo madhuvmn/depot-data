@@ -1,0 +1,1290 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Entry Form AND Export → Excel (Session, User Names)</title>
+  <style>
+  :root{
+    --accent:#2563eb;
+    --accent-soft:#e0edff;
+    --accent-strong:#1d4ed8;
+    --muted:#6b7280;
+    --bg:#e5edff;
+    --card:#ffffff;
+    --danger:#ef4444;
+    --danger-soft:#fee2e2;
+    --input-border:#dbeafe;
+    --unsaved:#fef9c3;
+    --table-header:#e0f2fe;
+  }
+
+  *{box-sizing:border-box}
+
+  body{
+    margin:0;
+    font-family:system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;
+    background:radial-gradient(circle at top,#eef2ff 0,#e5edff 35%,#dde3ff 100%);
+    color:#111827;
+    padding:14px;
+  }
+
+  .container{ max-width:1100px; margin:0 auto; }
+
+  header{ text-align:center; margin-bottom:14px; }
+  header h1{
+    margin:0;
+    font-size:20px;
+    font-weight:800;
+    background:linear-gradient(120deg,#2563eb,#7c3aed);
+    -webkit-background-clip:text;
+    background-clip:text;
+    color:transparent;
+  }
+
+  .card{
+    background:linear-gradient(135deg,#ffffff,#f5f7ff);
+    border-radius:14px;
+    padding:16px 14px;
+    box-shadow:0 14px 30px rgba(15,23,42,0.12);
+    margin-bottom:14px;
+    border:1px solid rgba(129,140,248,0.35);
+  }
+
+  .form-area{ display:flex; flex-direction:column; gap:10px; }
+
+  /* Serial | Date | Session | User ID | Qty | Pct | Amount | Actions  */
+  .row-input{
+    display:grid;
+    grid-template-columns:48px 140px 90px 80px 1fr 1fr 1fr 120px;
+    gap:8px;
+    align-items:end;
+    padding:10px;
+    border-radius:10px;
+    background:rgba(239,246,255,0.9);
+    border:1px dashed rgba(191,219,254,0.9);
+    transition:box-shadow .18s ease, transform .18s ease, border-color .18s ease;
+  }
+  .row-input + .row-input{ margin-top:6px; }
+
+  .row-input:hover{
+    box-shadow:0 10px 20px rgba(37,99,235,0.15);
+    border-color:#2563eb;
+    transform:translateY(-1px);
+  }
+
+  .serial-badge{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-weight:700;
+    color:#111827;
+    font-size:14px;
+    background:var(--accent-soft);
+    border-radius:999px;
+    padding:4px 0;
+  }
+
+  label{
+    font-size:12px;
+    color:var(--muted);
+    display:block;
+    margin-bottom:4px;
+  }
+
+  input[type="number"],
+  input[type="date"],
+  input[type="text"],
+  select{
+    width:100%;
+    padding:8px 10px;
+    border-radius:8px;
+    border:1px solid var(--input-border);
+    background:white;
+    font-size:14px;
+    outline:none;
+    transition:border-color .16s ease, box-shadow .16s ease, background-color .16s ease;
+  }
+  input[readonly]{ background:#f3f4ff; }
+
+  input:focus,
+  select:focus{
+    border-color:var(--accent-strong);
+    box-shadow:0 0 0 2px rgba(129,140,248,0.4);
+    background:#ffffff;
+  }
+
+  .field{ display:flex; flex-direction:column; }
+
+  .actions-row{
+    display:flex;
+    gap:8px;
+    align-items:center;
+    margin-top:8px;
+    flex-wrap:wrap;
+  }
+
+  button{
+    padding:10px 14px;
+    border-radius:999px;
+    border:0;
+    background:var(--accent);
+    color:white;
+    font-weight:700;
+    cursor:pointer;
+    font-size:13px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:4px;
+    box-shadow:0 8px 18px rgba(37,99,235,0.25);
+    transition:background-color .16s ease, transform .12s ease, box-shadow .16s ease, opacity .16s ease;
+  }
+
+  button:hover{
+    background:var(--accent-strong);
+    transform:translateY(-1px);
+    box-shadow:0 12px 24px rgba(37,99,235,0.30);
+  }
+
+  button:active{
+    transform:translateY(0);
+    box-shadow:0 6px 12px rgba(37,99,235,0.25);
+  }
+
+  button.ghost{
+    background:rgba(255,255,255,0.9);
+    border:1px solid #d1d5db;
+    color:#111827;
+    box-shadow:none;
+  }
+
+  button.ghost:hover{
+    background:#f3f4ff;
+    border-color:rgba(129,140,248,0.8);
+    box-shadow:0 4px 10px rgba(148,163,184,0.35);
+  }
+
+  button.warn{
+    background:var(--danger);
+    box-shadow:0 8px 18px rgba(248,113,113,0.4);
+  }
+  button.warn:hover{
+    background:#dc2626;
+    box-shadow:0 10px 20px rgba(239,68,68,0.45);
+  }
+
+  button.small{ padding:8px 12px; font-size:12px; }
+
+  .controls-left{ display:flex; gap:8px; align-items:center; }
+  .controls-right{ margin-left:auto; display:flex; gap:8px; align-items:center; }
+
+  .table-wrap{ overflow-x:auto; margin-top:4px; }
+
+  table{
+    width:100%;
+    border-collapse:separate;
+    border-spacing:0;
+    min-width:700px;
+    font-size:14px;
+  }
+
+  th,td{
+    text-align:left;
+    padding:10px 12px;
+    border-bottom:1px solid #e5e7eb;
+    vertical-align:middle;
+  }
+
+  .preview-scroll thead th,
+  .user-scroll thead th{
+    background:var(--table-header);
+    font-weight:800;
+    font-size:13px;
+    position:sticky;
+    top:0;
+    z-index:5;
+    box-shadow:0 2px 4px rgba(148,163,184,0.35);
+  }
+
+  tbody tr:nth-child(even){
+    background:#f9fafb;
+  }
+
+  tbody tr:hover{
+    background:#eff6ff;
+  }
+
+  td.actions{ white-space:nowrap; width:1px; }
+
+  .inline-error{
+    color:var(--danger);
+    font-size:12px;
+    margin-top:4px;
+    display:block;
+  }
+
+  .small-muted{ font-size:12px; color:var(--muted); }
+
+  .file-row{
+    display:flex;
+    gap:8px;
+    align-items:center;
+    flex-wrap:wrap;
+  }
+
+  .file-input{
+    padding:8px 10px;
+    background:#fff;
+    border-radius:10px;
+    border:1px solid var(--input-border);
+    min-width:220px;
+  }
+
+  .unsaved-row{
+    background:var(--unsaved);
+  }
+
+  @media (max-width:880px){
+    .row-input{
+      grid-template-columns:48px 1fr 1fr;
+      grid-auto-rows:auto;
+      gap:6px;
+    }
+    .row-input > .col-actions{ grid-column:1 / -1; justify-self:end; }
+  }
+
+  @media (max-width:520px){
+    header h1{ font-size:18px; }
+    .row-input{ grid-template-columns:1fr; }
+    .row-input > .col-actions{ justify-self:start; }
+    table{ min-width:520px; }
+  }
+
+  /* Scrollable sections */
+  .scroll-section {
+    max-height:260px;
+    overflow-y:auto;
+    padding-right:6px;
+  }
+
+  .preview-scroll {
+    max-height:330px;
+    overflow-y:auto;
+    padding-right:6px;
+  }
+
+  .user-scroll {
+    max-height:200px;
+    overflow-y:auto;
+    padding-right:6px;
+  }
+
+  /* Smooth, light scrollbars */
+  ::-webkit-scrollbar {
+    width:8px;
+    height:8px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background:#cbd5f5;
+    border-radius:999px;
+  }
+  ::-webkit-scrollbar-track {
+    background:transparent;
+  }
+
+  .section-title{
+    font-size:18px;
+    font-weight:800;
+    text-align:center;
+    margin-bottom:10px;
+    color:#1f2937;
+  }
+
+  .section-title::after{
+    content:'';
+    display:block;
+    width:70px;
+    height:3px;
+    margin:6px auto 0;
+    border-radius:999px;
+    background:linear-gradient(90deg,#2563eb,#7c3aed);
+  }
+
+  @media (max-width:520px){
+    .section-title{ font-size:16px; }
+  }
+
+  /* ===== General mobile tweaks ===== */
+  @media (max-width: 600px) {
+    body {
+      font-size: 14px;
+    }
+
+    .card {
+      margin: 10px;
+      padding: 14px 12px;
+      border-radius: 12px;
+    }
+
+    .section-title {
+      font-size: 16px;
+    }
+
+    h1, h2 {
+      font-size: 18px;
+    }
+
+    /* Serial pill */
+    .serial-badge {
+      font-size: 16px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      display: inline-flex;
+      margin-bottom: 4px;
+    }
+
+    /* Form inputs – reduce vertical spacing */
+    .field {
+      margin-bottom: 6px;
+    }
+
+    /* Buttons row under form */
+    .actions-row {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .actions-row .controls-left,
+    .actions-row .controls-right {
+      width: 100%;
+      justify-content: stretch;
+    }
+
+    .actions-row button {
+      flex: 1;
+      width: 100%;
+      justify-content: center;
+    }
+
+    /* Top-right controls in table card */
+    .controls-right {
+      margin-left: 0;
+      margin-top: 8px;
+      display: flex;
+      gap: 8px;
+      width: 100%;
+      justify-content: stretch;
+    }
+
+    .controls-right button {
+      flex: 1;
+      border-radius: 999px;
+      padding: 8px 10px;
+      font-size: 13px;
+    }
+
+    /* Rows count */
+    .rows-count {
+      font-size: 12px;
+      opacity: 0.7;
+    }
+
+    /* Tables shouldn’t overflow */
+    table {
+      min-width: 100%;
+    }
+
+    .preview-scroll {
+		max-height: 340px; /* or any value you like */
+		overflow-y: auto;
+	  }
+  }
+
+  /* ===== Responsive "card" table for small screens ===== */
+  @media (max-width: 600px) {
+    .responsive-table {
+      border-collapse: collapse;
+      width: 100%;
+      min-width: 0;
+    }
+
+    .responsive-table thead {
+      display: none;
+    }
+
+    .responsive-table tr {
+      display: block;
+      margin-bottom: 10px;
+      border: 1px solid rgba(0,0,0,0.06);
+      border-radius: 10px;
+      padding: 8px 10px;
+      background: rgba(255,255,255,0.85);
+    }
+
+    .responsive-table td {
+      display: flex;
+      justify-content: space-between;
+      padding: 4px 0;
+      font-size: 13px;
+      border-bottom: 0;
+    }
+
+    .responsive-table td::before {
+      content: attr(data-label);
+      font-weight: 600;
+      margin-right: 8px;
+      white-space: nowrap;
+    }
+
+    .responsive-table td.actions {
+	  justify-content: flex-start;
+	  align-items: center;
+	  flex-wrap: nowrap;  /* keep them in a single row */
+	  gap: 6px;
+	}
+
+	.responsive-table td.actions::before {
+	  content: "Actions";
+	  font-weight: 600;
+	  margin-right: 8px;
+	  white-space: nowrap;
+	}
+
+	.responsive-table td.actions button {
+	  flex: 0 0 auto;     /* prevent buttons from stretching weirdly */
+	}
+
+  }
+  
+  /* Row action buttons (preview table) */
+	button.btn-edit{
+	  background:#3b82f6;          /* blue */
+	}
+	button.btn-edit:hover{
+	  background:#2563eb;
+	}
+
+	button.btn-delete-row{
+	  background:var(--danger);    /* red (same tone as other delete buttons) */
+	}
+	button.btn-delete-row:hover{
+	  background:#dc2626;
+	}
+
+	button.btn-copy{
+	  background:#6b7280;          /* gray */
+	}
+	button.btn-copy:hover{
+	  background:#4b5563;
+	}
+
+
+  </style>
+
+</head>
+<body>
+  <div class="container">
+    <header><h1>Entry Form AND Export → Excel</h1></header>
+
+    <!-- MAIN FORM CARD -->
+    <section class="card" aria-labelledby="form-title">
+       <div id="form-title" class="section-title">
+		  Add new entries (add multiple rows, then click Save)
+		</div>
+
+      <div style="margin-bottom:10px" class="file-row">
+        <input id="file-input" class="file-input" type="file" accept=".xlsx,.xls,.csv" />
+        <div id="file-info" class="small-muted" style="margin-left:auto"></div>
+      </div>
+
+      <div class="scroll-section">
+		  <div class="form-area" id="form-area"></div>
+		</div>
+
+      <div class="actions-row">
+        <div class="controls-left">
+          <button id="btn-add-row" class="small">＋ Add Row</button>
+          <button id="btn-clear-form" class="ghost small">Clear form</button>
+        </div>
+        <div class="controls-right">
+          <button id="btn-save" style="background:#0b74de;">💾 Save</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- TABLE PREVIEW -->
+    <section class="card">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;flex-wrap:wrap">
+		<div class="section-title" style="margin-bottom:0;flex:1 0 100%">
+          Table preview (imported or saved rows appear here)
+        </div>
+
+        <div class="controls-right">
+          <button id="btn-download-xlsx" class="small">⬇️ Download Excel (.xlsx)</button>
+          <button id="btn-delete-all" class="warn small">Delete all</button>
+        </div>
+        <div id="rows-count" class="small-muted rows-count" style="margin-left:10px"></div>
+      </div>
+
+	  <div class="preview-scroll">
+		  <div class="table-wrap">
+			<table id="data-table" class="responsive-table" role="table" aria-label="Data table">
+			  <thead id="table-head"></thead>
+			  <tbody id="table-body"></tbody>
+			</table>
+		  </div>
+	  </div>
+    </section>
+	
+	<!-- USERS LIST CARD -->
+	<section class="card">
+	  <div style="margin-bottom:8px;">
+		  <div class="section-title" style="margin-bottom:6px;">
+			Users List (User ID ↔ User Name)
+		  </div>
+
+		  <div style="display:flex; justify-content:flex-end;">
+			<button id="btn-toggle-users" class="ghost small" type="button">
+			  Hide list
+			</button>
+		  </div>
+		</div>
+
+
+	  <div class="user-scroll" id="user-list-container">
+		<div class="table-wrap">
+		  <table>
+			<thead>
+			  <tr>
+				<th style="width:80px;">User ID</th>
+				<th>User Name</th>
+			  </tr>
+			</thead>
+			<tbody id="user-table-body"></tbody>
+		  </table>
+		</div>
+	  </div>
+
+	  <div id="user-hint" class="small-muted" style="margin-top:6px;">
+		To change names or add more, edit the <code>USER_NAMES</code> map in the script section.
+	  </div>
+	</section>
+
+    <footer style="text-align:center; color:var(--muted); font-size:13px; margin-top:8px">
+	  Tip: Imported rows are highlighted until you click Save. Dates display as dd-mmm-yy (e.g., 29-Nov-25).
+    </footer>
+  </div>
+
+  <!-- SheetJS -->
+  <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+
+  <script>
+    // =========================
+    // USER ID -> NAME MAPPING
+    // =========================
+    const USER_NAMES = {
+      1: "నాసిన. అంకయ్య",
+      2: "నాసిన. వాసు",
+      3: "నాసిన. సంపూర్ణమ్మ",
+      4: "గెద్దే. కొండయ్య",
+	  5: "కుట్టుబోయిన. వరలక్ష్మమ్మ",
+	  6: "వెలినేని. సుగుణమ్మ",
+	  7: "వడ్లమాని. రాఘవులు నాయుడు",
+	  8: "వెలినేని. రవణమ్మ",
+	  9: "వడ్లమాని. అల్లిబాబు",
+	  10: "వడ్లమాని. అనిల్",
+	  11: "వడ్లమాని. దొరసానమ్మ",
+	  12: "కాకుటూరి. నాగేశ్వరరావు",
+	  13: "చిట్టిబోయిన. వేంకటేశ్వర్లు",
+	  14: "చిట్టిబోయిన. మమత",
+	  15: "గిద్దలూరి. ప్రకాష్",
+	  16: "కూనిశెట్టి. కళాధరరావు",
+	  17: "వడ్లమాని. బుజ్జయ్య",
+	  18: "N/A",
+	  19: "N/A",
+	  20: "N/A",
+    };
+
+    function getUserNameById(id){
+      const n = Number(id);
+      return USER_NAMES[n] || "";
+    }
+
+    // Each row: { date (ISO), session ('AM'/'PM'), id, quantity, percentage, amount, saved: true/false }
+    let rows = [];
+    let nextFormId = 1;
+
+    // DOM refs
+    const formArea     = document.getElementById('form-area');
+    const fileInput    = document.getElementById('file-input');
+    const fileInfo     = document.getElementById('file-info');
+    const btnAddRow    = document.getElementById('btn-add-row');
+    const btnSave      = document.getElementById('btn-save');
+    const btnClearForm = document.getElementById('btn-clear-form');
+    const btnDeleteAll = document.getElementById('btn-delete-all');
+    const btnDownload  = document.getElementById('btn-download-xlsx');
+    const tableHead    = document.getElementById('table-head');
+    const tableBody    = document.getElementById('table-body');
+    const rowsCount    = document.getElementById('rows-count');
+    const userTableBody = document.getElementById('user-table-body');
+
+    function buildKey(dateIso, session, id){
+      return `${dateIso}__${session}__${Number(id)}`;
+    }
+
+    function formatNumber(n){
+      if (!isFinite(n)) return '';
+      return (Math.round(n * 100) / 100).toFixed(2);
+    }
+    function isoFromDate(d){
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth()+1).padStart(2,'0');
+      const dd = String(d.getDate()).padStart(2,'0');
+      return `${yyyy}-${mm}-${dd}`;
+    }
+    function displayDateFromISO(iso){
+	  if (!iso) return '';
+
+	  const m = String(iso).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+	  if (!m) return String(iso);
+
+	  const day   = m[3];
+	  const month = parseInt(m[2], 10);
+	  const year  = m[1].slice(-2);
+
+	  const MONTH_SHORT = [
+		'Jan','Feb','Mar','Apr','May','Jun',
+		'Jul','Aug','Sep','Oct','Nov','Dec'
+	  ];
+	  const monName = MONTH_SHORT[month - 1] || m[2];
+
+	  return `${day}-${monName}-${year}`;
+	}
+
+    function parseDateToISO(value){
+      if (value instanceof Date && !isNaN(value)) return isoFromDate(value);
+      if (typeof value === 'number') {
+        const epoch = new Date(Date.UTC(1899,11,30));
+        const d = new Date(epoch.getTime() + value * 24*60*60*1000);
+        if (!isNaN(d)) return isoFromDate(d);
+      }
+      const s = String(value||'').trim();
+      if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+      const parsed = Date.parse(s);
+      if (!isNaN(parsed)) return isoFromDate(new Date(parsed));
+      const m = s.match(/^(\d{1,2})[\/\-\.\s](\d{1,2})[\/\-\.\s](\d{2,4})$/);
+      if (m){
+        let dd = Number(m[1]), mm = Number(m[2]), yy = Number(m[3]);
+        if (yy < 100) yy += 2000;
+        const d = new Date(yy, mm-1, dd);
+        if (!isNaN(d)) return isoFromDate(d);
+      }
+      return s;
+    }
+
+    function validateId(v){
+      if (v === '' || v === null || v === undefined) return 'User ID is required.';
+      if (!/^[-+]?\d+$/.test(String(v))) return 'User ID must be an integer.';
+      const n = Number(v);
+      if (!Number.isInteger(n)) return 'User ID must be an integer.';
+      if (n < 1 || n > 20) return 'User ID must be between 1 and 20.';
+      return '';
+    }
+    function validateDate(v){ if (!v) return 'Date is required.'; return ''; }
+    function validateSession(v){
+      if (!v) return 'Session is required.';
+      if (v !== 'AM' && v !== 'PM') return 'Session must be AM or PM.';
+      return '';
+    }
+    function validateQty(v){
+      if (v === '' || v === null || v === undefined) return 'Quantity is required.';
+      const n = Number(v);
+      if (isNaN(n)) return 'Quantity must be a number.';
+      if (!(n > 0)) return 'Quantity must be greater than 0.0.';
+      return '';
+    }
+    function validatePct(v){
+      if (v === '' || v === null || v === undefined) return 'Percentage is required.';
+      const n = Number(v);
+      if (isNaN(n)) return 'Percentage must be a number.';
+      if (n < 5.0 || n > 10.0) return 'Percentage must be between 5.0 and 10.0.';
+      return '';
+    }
+    function calcAmount(q,p){
+      const qn = Number(q);
+      const pn = Number(p);
+      if (!isFinite(qn) || !isFinite(pn)) return '';
+      return Number((qn * pn * 7.5).toFixed(2));
+    }
+
+    function createFormRow(prefill = {}) {
+      const id = 'fr_' + (nextFormId++);
+      const wrapper = document.createElement('div');
+      wrapper.className = 'row-input';
+      wrapper.dataset.formId = id;
+
+      const serialCol = document.createElement('div');
+      serialCol.className = 'serial-badge';
+      serialCol.textContent = '—';
+
+      const colDate = document.createElement('div'); colDate.className='field';
+      const lblDate = document.createElement('label'); lblDate.textContent='Date';
+      const inpDate = document.createElement('input'); inpDate.type='date';
+      if (prefill.date) inpDate.value = prefill.date;
+      const errDate = document.createElement('span'); errDate.className='inline-error'; errDate.style.display='none';
+      colDate.appendChild(lblDate); colDate.appendChild(inpDate); colDate.appendChild(errDate);
+
+      const colSession = document.createElement('div'); colSession.className='field';
+      const lblSession = document.createElement('label'); lblSession.textContent='Session';
+      const selSession = document.createElement('select');
+      const optEmpty = document.createElement('option'); optEmpty.value=''; optEmpty.textContent='-- Select --';
+      const optAM    = document.createElement('option'); optAM.value='AM'; optAM.textContent='AM';
+      const optPM    = document.createElement('option'); optPM.value='PM'; optPM.textContent='PM';
+      selSession.appendChild(optEmpty); selSession.appendChild(optAM); selSession.appendChild(optPM);
+      if (prefill.session) selSession.value = prefill.session;
+      const errSession = document.createElement('span'); errSession.className='inline-error'; errSession.style.display='none';
+      colSession.appendChild(lblSession); colSession.appendChild(selSession); colSession.appendChild(errSession);
+
+      // User ID
+      const colId = document.createElement('div');
+      colId.className = 'field';
+      const lblId = document.createElement('label');
+      lblId.textContent = 'User ID';
+      const inpId = document.createElement('input');
+      inpId.type = 'number';
+      inpId.min = 0;
+      inpId.max = 21;
+      inpId.step = 1;
+      inpId.value = (prefill.id !== undefined && prefill.id !== null) ? prefill.id : '';
+      inpId.placeholder = '1–20';
+
+      const errId = document.createElement('span');
+      errId.className = 'inline-error';
+      errId.style.display = 'none';
+
+      colId.appendChild(lblId);
+      colId.appendChild(inpId);
+      colId.appendChild(errId);
+
+      const colQty = document.createElement('div'); colQty.className='field';
+      const lblQty = document.createElement('label'); lblQty.textContent='Quantity';
+      const inpQty = document.createElement('input'); inpQty.type='number'; inpQty.step='any';
+      if (prefill.quantity !== undefined && prefill.quantity !== null) inpQty.value = prefill.quantity;
+      const errQty = document.createElement('span'); errQty.className='inline-error'; errQty.style.display='none';
+      colQty.appendChild(lblQty); colQty.appendChild(inpQty); colQty.appendChild(errQty);
+
+      const colPct = document.createElement('div'); colPct.className='field';
+      const lblPct = document.createElement('label'); lblPct.textContent='Percentage';
+      const inpPct = document.createElement('input'); inpPct.type='number'; inpPct.step='any';
+      if (prefill.percentage !== undefined && prefill.percentage !== null) inpPct.value = prefill.percentage;
+      const errPct = document.createElement('span'); errPct.className='inline-error'; errPct.style.display='none';
+      colPct.appendChild(lblPct); colPct.appendChild(inpPct); colPct.appendChild(errPct);
+
+      const colAmt = document.createElement('div'); colAmt.className='field col-amount';
+      const lblAmt = document.createElement('label'); lblAmt.textContent='Amount';
+      const inpAmt = document.createElement('input'); inpAmt.type='text'; inpAmt.readOnly=true;
+      if (prefill.amount !== undefined && prefill.amount !== null) inpAmt.value = formatNumber(prefill.amount);
+      colAmt.appendChild(lblAmt); colAmt.appendChild(inpAmt);
+
+      const colAct = document.createElement('div'); colAct.className='field col-actions';
+      const btnRemove = document.createElement('button'); btnRemove.type='button'; btnRemove.className='ghost small'; btnRemove.textContent='Remove';
+      btnRemove.addEventListener('click', () => { wrapper.remove(); updateFormSerials(); });
+      colAct.appendChild(document.createElement('div')); colAct.appendChild(btnRemove);
+
+      wrapper.appendChild(serialCol);
+      wrapper.appendChild(colDate);
+      wrapper.appendChild(colSession);
+      wrapper.appendChild(colId);
+      wrapper.appendChild(colQty);
+      wrapper.appendChild(colPct);
+      wrapper.appendChild(colAmt);
+      wrapper.appendChild(colAct);
+
+      function recalc(){
+        const q = inpQty.value;
+        const p = inpPct.value;
+        const a = calcAmount(q,p);
+        inpAmt.value = a === '' ? '' : formatNumber(a);
+      }
+      inpQty.addEventListener('input', recalc);
+      inpPct.addEventListener('input', recalc);
+
+      function updateNameTooltip(){
+        const nm = getUserNameById(inpId.value);
+        inpId.title = nm ? `Name: ${nm}` : '';
+      }
+
+      inpId.addEventListener('input', updateNameTooltip);
+      updateNameTooltip();
+
+      inpId.addEventListener('blur', () => {
+        const msg = validateId(inpId.value);
+        if (msg){ errId.style.display='block'; errId.textContent = msg; } else { errId.style.display='none'; }
+        updateNameTooltip();
+      });
+      inpDate.addEventListener('blur', () => {
+        const msg = validateDate(inpDate.value);
+        if (msg){ errDate.style.display='block'; errDate.textContent = msg; } else { errDate.style.display='none'; }
+      });
+      selSession.addEventListener('blur', () => {
+        const msg = validateSession(selSession.value);
+        if (msg){ errSession.style.display='block'; errSession.textContent = msg; } else { errSession.style.display='none'; }
+      });
+      inpQty.addEventListener('blur', () => {
+        const msg = validateQty(inpQty.value);
+        if (msg){ errQty.style.display='block'; errQty.textContent = msg; } else { errQty.style.display='none'; }
+      });
+      inpPct.addEventListener('blur', () => {
+        const msg = validatePct(inpPct.value);
+        if (msg){ errPct.style.display='block'; errPct.textContent = msg; } else { errPct.style.display='none'; }
+      });
+
+      wrapper._fields = {
+        serialCol,
+        inpDate,
+        selSession,
+        inpId,
+        inpQty,
+        inpPct,
+        inpAmt,
+        errId,
+        errDate,
+        errSession,
+        errQty,
+        errPct
+      };
+
+      formArea.insertBefore(wrapper, formArea.firstChild);
+      updateFormSerials();
+      return wrapper;
+    }
+
+    function updateFormSerials(){
+      const nodes = Array.from(formArea.children);
+      for (let i=0; i<nodes.length; i++){
+        const w = nodes[i];
+        if (w._fields && w._fields.serialCol) w._fields.serialCol.textContent = (i+1);
+      }
+    }
+
+    function mapHeaders(headerRow){
+      const map = {};
+      headerRow.forEach((h, idx) => {
+        if (h == null) return;
+        const key = String(h).trim().toLowerCase();
+        if (!key) return;
+        if (['date','day'].includes(key)) map[idx] = 'date';
+        else if (['session','am/pm','am-pm','ampm'].includes(key)) map[idx] = 'session';
+        else if (['user id','userid','user_id','id','identifier','ident','no','number'].includes(key)) map[idx] = 'id';
+        else if (['quantity','qty','q'].includes(key)) map[idx] = 'quantity';
+        else if (['percentage','pct','percent','%'].includes(key)) map[idx] = 'percentage';
+        else if (['amount','amt','value','total'].includes(key)) map[idx] = 'amount';
+        else {
+          if (key.includes('date')) map[idx]='date';
+          else if (key.includes('session')) map[idx]='session';
+          else if (key.includes('user') && key.includes('id')) map[idx]='id';
+          else if (key.includes('id')) map[idx]='id';
+          else if (key.includes('qty')||key.includes('quant')) map[idx]='quantity';
+          else if (key.includes('pct')||key.includes('percent')||key.includes('%')) map[idx]='percentage';
+          else if (key.includes('amt')||key.includes('amount')) map[idx]='amount';
+        }
+      });
+      return map;
+    }
+
+    function loadWorkbookFileToTable(file){
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const data = e.target.result;
+        let workbook;
+        try {
+          workbook = XLSX.read(data, { type:'array', cellDates:true, dateNF:'yyyy-mm-dd' });
+        } catch(err){
+          alert('Failed to read file: '+err);
+          return;
+        }
+        const firstSheet = workbook.SheetNames[0];
+        const ws = workbook.Sheets[firstSheet];
+        if (!ws) { alert('No sheets found'); return; }
+        const aoa = XLSX.utils.sheet_to_json(ws, { header:1, defval:null, raw:false, dateNF:'yyyy-mm-dd' });
+        if (aoa.length === 0) { alert('Sheet empty'); return; }
+
+        const header = aoa[0].map(h => h===null ? '' : String(h));
+        let mapping = mapHeaders(header);
+
+        if (!Object.values(mapping).includes('date') && aoa.length>1 && aoa[0].length>=4) {
+          mapping = {0:'date',1:'session',2:'id',3:'quantity',4:'percentage'};
+          if (aoa[0].length>=6) mapping[5]='amount';
+        }
+
+        const extracted = [], errors = [];
+        const existingKeys = new Set(rows.map(r => buildKey(r.date, r.session, r.id)));
+        const batchKeys    = new Set();
+
+        for (let r=1; r<aoa.length; r++){
+          const row = aoa[r];
+          if (!row || row.every(c=>c===null||c==='')) continue;
+          const obj = {};
+          for (let c=0; c<row.length; c++){
+            const field = mapping[c]; if (!field) continue;
+            const cell = row[c];
+            if (field==='date'){
+              obj.date = parseDateToISO(cell);
+            } else if (field==='session'){
+              if (cell == null) obj.session = null;
+              else {
+                let s = String(cell).trim().toUpperCase();
+                if (s === 'A.M.') s = 'AM';
+                if (s === 'P.M.') s = 'PM';
+                if (s === 'AM' || s === 'PM') obj.session = s;
+                else obj.session = s;
+              }
+            } else if (field==='id'){
+              const n = (cell===null)?null:Number(cell);
+              obj.id = Number.isFinite(n)?Math.trunc(n):(cell!==null?String(cell).trim():null);
+            } else if (field==='quantity'){
+              const n=(cell===null)?null:Number(cell);
+              obj.quantity = Number.isFinite(n)?n:(cell!==null?Number(String(cell).replace(/,/g,'')):null);
+            } else if (field==='percentage'){
+              const raw = cell; let n=null;
+              if (raw!==null){
+                const s = String(raw).replace('%','').replace(/,/g,'').trim();
+                n = Number(s);
+              }
+              obj.percentage = Number.isFinite(n)?n:null;
+            } else if (field==='amount'){
+              const n=(cell===null)?null:Number(cell);
+              obj.amount = Number.isFinite(n)?n:null;
+            }
+          }
+
+          if ((obj.amount===null||obj.amount===undefined||obj.amount==='') &&
+              obj.quantity!=null && obj.percentage!=null){
+            obj.amount = calcAmount(obj.quantity,obj.percentage);
+          }
+
+          const eid  = validateId(obj.id);
+          const ed   = validateDate(obj.date);
+          const es   = validateSession(obj.session || '');
+          const eq   = validateQty(obj.quantity);
+          const ep   = validatePct(obj.percentage);
+
+          if (eid||ed||es||eq||ep){
+            errors.push({row:r+1, issues:[eid,ed,es,eq,ep].filter(Boolean).join(' | '), raw: obj});
+            continue;
+          }
+
+          const key = buildKey(obj.date, obj.session, obj.id);
+          if (existingKeys.has(key) || batchKeys.has(key)){
+            errors.push({row:r+1, issues:'Duplicate entry (same Date, Session and User ID already exists).', raw: obj});
+            continue;
+          }
+          batchKeys.add(key);
+
+          extracted.push({
+            date: obj.date,
+            session: obj.session,
+            id: Number(obj.id),
+            quantity: Number(obj.quantity),
+            percentage: Number(obj.percentage),
+            amount: Number(obj.amount) || calcAmount(obj.quantity,obj.percentage),
+            saved: false
+          });
+        }
+
+        if (extracted.length) {
+          rows = rows.concat(extracted);
+          renderTable();
+        }
+        let msg = `Imported ${extracted.length} valid row${extracted.length===1?'':'s'} from "${file.name}".`;
+        if (errors.length){
+          msg += ` ${errors.length} row${errors.length===1?'':'s'} skipped.`;
+          console.warn('Import skipped rows:', errors);
+        }
+        alert(msg);
+        fileInfo.textContent = `Last imported: ${file.name} — ${extracted.length} rows loaded, ${errors.length} skipped.`;
+
+        fileInput.value = "";
+      };
+      reader.onerror = (err) => { alert('File read error: ' + err); };
+      reader.readAsArrayBuffer(file);
+    }
+
+    function gatherAndValidateAll(){
+      const nodes = Array.from(formArea.children);
+      const collected = [];
+      let hasError = false;
+
+      const existingKeys = new Set(rows.map(r => buildKey(r.date, r.session, r.id)));
+      const newKeys = new Set();
+
+      nodes.reverse();
+      for (const wrapper of nodes){
+        const f = wrapper._fields;
+        const datev    = f.inpDate.value;
+        const sessionv = f.selSession.value;
+        const idv      = f.inpId.value;
+        const qtyv     = f.inpQty.value;
+        const pctv     = f.inpPct.value;
+
+        const eDate = validateDate(datev);
+        const eSess = validateSession(sessionv);
+        const eId   = validateId(idv);
+        const eQty  = validateQty(qtyv);
+        const ePct  = validatePct(pctv);
+
+        if (eDate){ f.errDate.style.display='block'; f.errDate.textContent=eDate; hasError=true; } else f.errDate.style.display='none';
+        if (eSess){ f.errSession.style.display='block'; f.errSession.textContent=eSess; hasError=true; } else f.errSession.style.display='none';
+        if (eId){   f.errId.style.display='block';   f.errId.textContent=eId;   hasError=true; } else f.errId.style.display='none';
+        if (eQty){  f.errQty.style.display='block';  f.errQty.textContent=eQty; hasError=true; } else f.errQty.style.display='none';
+        if (ePct){  f.errPct.style.display='block';  f.errPct.textContent=ePct; hasError=true; } else f.errPct.style.display='none';
+
+        if (!eDate && !eSess && !eId && !eQty && !ePct){
+          const key = buildKey(datev, sessionv, idv);
+          if (existingKeys.has(key) || newKeys.has(key)){
+            const dupMsg = 'Duplicate entry: same Date, Session and User ID already exists in table.';
+            f.errId.style.display = 'block';
+            f.errId.textContent   = dupMsg;
+            hasError = true;
+          } else {
+            newKeys.add(key);
+            const amt = calcAmount(qtyv,pctv);
+            collected.push({
+              date: datev,
+              session: sessionv,
+              id: Number(idv),
+              quantity: Number(qtyv),
+              percentage: Number(pctv),
+              amount: amt===''?0:amt
+            });
+          }
+        }
+      }
+      nodes.reverse();
+      if (hasError) return { ok:false, data:null };
+      return { ok:true, data:collected };
+    }
+
+    function saveAllFormRows(){
+      const res = gatherAndValidateAll();
+      if (!res.ok){
+        alert('Please fix validation errors before saving.');
+        return;
+      }
+      const savedRows = res.data.map(r => ({...r, saved:true}));
+      rows = rows.concat(savedRows);
+      rows = rows.map(r => ({ ...r, saved:true }));
+      renderTable();
+      clearForm();
+    }
+
+    // ===== renderTable now adds data-labels for responsive cards =====
+    function renderTable(){
+      tableHead.innerHTML = '';
+      const headRow = document.createElement('tr');
+      ['S.No','Date','Session','User ID','Quantity','Percentage','Amount','Actions'].forEach(h => {
+        const th = document.createElement('th');
+        th.textContent = h;
+        headRow.appendChild(th);
+      });
+      tableHead.appendChild(headRow);
+
+      tableBody.innerHTML = '';
+      rows.forEach((r, idx) => {
+        const tr = document.createElement('tr');
+        if (!r.saved) tr.classList.add('unsaved-row');
+
+        const tdSerial = document.createElement('td');
+        tdSerial.textContent = idx+1;
+        tdSerial.setAttribute('data-label','S.No');
+        tr.appendChild(tdSerial);
+
+        const tdDate   = document.createElement('td');
+        tdDate.textContent   = displayDateFromISO(r.date);
+        tdDate.setAttribute('data-label','Date');
+        tr.appendChild(tdDate);
+
+        const tdSess   = document.createElement('td');
+        tdSess.textContent   = r.session;
+        tdSess.setAttribute('data-label','Session');
+        tr.appendChild(tdSess);
+
+        const tdId     = document.createElement('td');
+        tdId.textContent     = r.id;
+        tdId.setAttribute('data-label','User ID');
+        tr.appendChild(tdId);
+
+        const tdQty    = document.createElement('td');
+        tdQty.textContent    = formatNumber(r.quantity);
+        tdQty.setAttribute('data-label','Quantity');
+        tr.appendChild(tdQty);
+
+        const tdPct    = document.createElement('td');
+        tdPct.textContent    = formatNumber(r.percentage);
+        tdPct.setAttribute('data-label','Percentage');
+        tr.appendChild(tdPct);
+
+        const tdAmt    = document.createElement('td');
+        tdAmt.textContent    = formatNumber(r.amount);
+        tdAmt.setAttribute('data-label','Amount');
+        tr.appendChild(tdAmt);
+
+        const tdAct = document.createElement('td'); tdAct.className='actions';
+		tdAct.setAttribute('data-label','Actions');
+
+		const btnEdit = document.createElement('button');
+		btnEdit.className = 'small btn-edit';
+		btnEdit.textContent = 'Edit';
+
+		const btnDelete = document.createElement('button');
+		btnDelete.className = 'small btn-delete-row';
+		btnDelete.textContent = 'Delete';
+
+		const btnCopy = document.createElement('button');
+		btnCopy.className = 'small btn-copy';
+		btnCopy.textContent = 'Copy';
+		
+        btnCopy.addEventListener('click', () => {
+          createFormRow({
+            date: r.date,
+            session: r.session,
+            id: r.id,
+            quantity: r.quantity,
+            percentage: r.percentage,
+            amount: r.amount
+          });
+          window.scrollTo({ top: 0, behavior:'smooth' });
+        });
+
+        btnDelete.addEventListener('click', () => {
+          if (!confirm('Delete this row?')) return;
+          rows.splice(idx,1);
+          renderTable();
+        });
+
+        btnEdit.addEventListener('click', () => {
+          createFormRow({
+            date: r.date,
+            session: r.session,
+            id: r.id,
+            quantity: r.quantity,
+            percentage: r.percentage,
+            amount: r.amount
+          });
+          rows.splice(idx,1);
+          renderTable();
+          window.scrollTo({ top: 0, behavior:'smooth' });
+        });
+
+        tdAct.appendChild(btnEdit);
+        tdAct.appendChild(btnDelete);
+        tdAct.appendChild(btnCopy);
+        tr.appendChild(tdAct);
+
+        tableBody.appendChild(tr);
+      });
+      rowsCount.textContent = `${rows.length} row${rows.length===1?'':'s'}`;
+    }
+
+    function clearForm(){
+      formArea.innerHTML = '';
+      nextFormId = 1;
+      createFormRow();
+      fileInfo.textContent = '';
+    }
+
+    function downloadXLSX(){
+      const aoa = [];
+      aoa.push(['Date','Session','User ID','Quantity','Percentage','Amount']);
+      rows.forEach(r => {
+        aoa.push([
+          displayDateFromISO(r.date),
+          r.session,
+          r.id,
+          r.quantity,
+          r.percentage,
+          r.amount
+        ]);
+      });
+      const ws = XLSX.utils.aoa_to_sheet(aoa);
+      ws['!cols'] = [{wch:12},{wch:10},{wch:10},{wch:12},{wch:12},{wch:14}];
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
+      XLSX.writeFile(wb, 'table-data.xlsx');
+    }
+
+    function renderUserList(){
+      userTableBody.innerHTML = '';
+      const ids = Object.keys(USER_NAMES)
+        .map(k => Number(k))
+        .filter(n => !isNaN(n))
+        .sort((a,b)=>a-b);
+      ids.forEach(id => {
+        const tr = document.createElement('tr');
+        const tdId = document.createElement('td'); tdId.textContent = id;
+        const tdName = document.createElement('td'); tdName.textContent = USER_NAMES[id];
+        tr.appendChild(tdId); tr.appendChild(tdName);
+        userTableBody.appendChild(tr);
+      });
+    }
+
+    renderTable();
+    clearForm();
+    renderUserList();
+
+	const btnToggleUsers = document.getElementById('btn-toggle-users');
+	const userListContainer = document.getElementById('user-list-container');
+	const userHint = document.getElementById('user-hint');
+
+	userListContainer.style.display = 'none';
+	if (userHint) userHint.style.display = 'none';
+	btnToggleUsers.textContent = 'Show list';
+
+	btnToggleUsers.addEventListener('click', () => {
+	  const isHidden = userListContainer.style.display === 'none';
+	  if (isHidden) {
+		userListContainer.style.display = '';
+		if (userHint) userHint.style.display = '';
+		btnToggleUsers.textContent = 'Hide list';
+	  } else {
+		userListContainer.style.display = 'none';
+		if (userHint) userHint.style.display = 'none';
+		btnToggleUsers.textContent = 'Show list';
+	  }
+	});
+
+    btnAddRow.addEventListener('click', () => { createFormRow(); updateFormSerials(); });
+    btnClearForm.addEventListener('click', () => {
+      if (!confirm('Clear all form rows?')) return;
+      clearForm();
+    });
+    btnSave.addEventListener('click', saveAllFormRows);
+    btnDeleteAll.addEventListener('click', () => {
+      if (!confirm('Delete ALL preview rows? This cannot be undone.')) return;
+      rows = [];
+      renderTable();
+    });
+    btnDownload.addEventListener('click', () => {
+      if (rows.length === 0){
+        if (!confirm('No rows available. Download header-only file?')) return;
+      }
+      downloadXLSX();
+    });
+
+    fileInput.addEventListener('change', (evt) => {
+      const f = evt.target.files && evt.target.files[0];
+      if (!f) return;
+      loadWorkbookFileToTable(f);
+    });
+
+    document.addEventListener('dragover', (e) => e.preventDefault());
+    document.addEventListener('drop', (e) => {
+      e.preventDefault();
+      const f = e.dataTransfer.files && e.dataTransfer.files[0];
+      if (f) loadWorkbookFileToTable(f);
+    });
+  </script>
+</body>
+</html>
