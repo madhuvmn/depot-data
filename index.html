@@ -3,25 +3,28 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Entry Form AND Export → Excel (Session, User Names)</title>
+  <title>Manage Depot Data</title>
 
   <!-- External CSS -->
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <div class="container">
-    <header><h1>Entry Form AND Export → Excel</h1></header>
+    <header><h1>Data Entry Form AND Export → Excel</h1></header>
 
     <!-- MAIN FORM CARD -->
     <section class="card" aria-labelledby="form-title">
        <div id="form-title" class="section-title">
-		  Add new entries (add multiple rows, then click Save)
+		  Add New Entries
+		</div>
+	  
+		<div style="margin-bottom:10px" class="file-row file-input-wrap">
+		  <span class="file-label">Import Data File:</span>
+		  <input id="file-input" class="file-input" type="file" accept=".xlsx,.xls,.csv">
+		  <div id="file-info" class="small-muted" style="margin-left:auto"></div>
+		  <a href="reports.html">Go to → REPORT</a>
 		</div>
 
-      <div style="margin-bottom:10px" class="file-row">
-        <input id="file-input" class="file-input" type="file" accept=".xlsx,.xls,.csv" />
-        <div id="file-info" class="small-muted" style="margin-left:auto"></div>
-      </div>
 
       <div class="scroll-section">
 		  <div class="form-area" id="form-area"></div>
@@ -29,7 +32,7 @@
 
       <div class="actions-row">
         <div class="controls-left">
-          <button id="btn-add-row" class="small">＋ Add Row</button>
+          <button id="btn-add-row" class="small">＋ New Row</button>
           <button id="btn-clear-form" class="ghost small">Clear form</button>
         </div>
         <div class="controls-right">
@@ -42,11 +45,11 @@
     <section class="card">
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;flex-wrap:wrap">
 		<div class="section-title" style="margin-bottom:0;flex:1 0 100%">
-          Table preview (imported or saved rows appear here)
+          Data Preview (Imported or Saved rows)
         </div>
 
         <div class="controls-right">
-          <button id="btn-download-xlsx" class="small">⬇️ Download Excel (.xlsx)</button>
+          <button id="btn-download-xlsx" class="small">⬇️ Download → Excel</button>
           <button id="btn-delete-all" class="warn small">Delete all</button>
         </div>
         <div id="rows-count" class="small-muted rows-count" style="margin-left:10px"></div>

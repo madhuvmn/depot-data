@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Reports – Excel Preview & PDF</title>
+  <link rel="stylesheet" href="style.css">			
+</head>
+<body>
+  <div class="container">
+    <header><h1>Reports – Excel Preview & PDF</h1></header>
+
+    <!-- UPLOAD CARD -->
+    <section class="card" aria-labelledby="upload-title">
+      <div id="upload-title" class="section-title">
+        Upload Report File
+      </div>
+		
+	<div style="margin-bottom:10px" class="file-row file-input-wrap">
+	  <span class="file-label">Import Data File:</span>
+	  <input id="file-input" class="file-input" type="file" accept=".xlsx,.xls,.csv">
+	  <div id="file-info" class="small-muted" style="margin-left:auto"></div>
+	  <a href="index.html">Go to → INDEX</a>
+	</div>
+
+
+      <div class="small-muted">
+        Tip: Select an Excel file exported from the main app. The first sheet will be previewed and used to generate ID-wise PDF slips.
+      </div>
+    </section>
+
+    <!-- TABLE PREVIEW -->
+    <section class="card">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;flex-wrap:wrap">
+        <div class="section-title" style="margin-bottom:0;flex:1 0 100%">
+          Table preview (first sheet)
+        </div>
+        <div id="rows-count" class="small-muted rows-count" style="margin-left:10px"></div>
+      </div>
+
+      <div class="preview-scroll">
+        <div class="table-wrap">
+          <table id="data-table" class="responsive-table" role="table" aria-label="Data table">
+            <thead id="table-head"></thead>
+            <tbody id="table-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- REPORT SECTION -->
+    <section class="card">
+      <div class="section-title">Generate PDF Report</div>
+
+      <div class="report-grid">
+        <div class="field">
+          <label for="report-from-id">From ID</label>
+          <input id="report-from-id" type="number" min="1" max="20" placeholder="1">
+        </div>
+        <div class="field">
+          <label for="report-to-id">To ID</label>
+          <input id="report-to-id" type="number" min="1" max="20" placeholder="20">
+        </div>
+        <div class="field">
+          <label for="report-from-date">From Date</label>
+          <input id="report-from-date" type="date">
+        </div>
+        <div class="field">
+          <label for="report-to-date">To Date</label>
+          <input id="report-to-date" type="date">
+        </div>
+      </div>
+
+      <div class="actions-row" style="margin-top:12px; justify-content:flex-end;">
+        <button id="btn-generate-report">📄 Generate PDF</button>
+      </div>
+
+      <div class="small-muted">
+        Leave fields empty to include all IDs / all dates.
+      </div>
+    </section>
+
+    <footer style="text-align:center; color:var(--muted); font-size:13px; margin-top:8px">
+      Tip: Scroll horizontally on small screens to see all columns. On mobile, rows show as cards.
+    </footer>
+  </div>
+
+  <!-- jsPDF for PDF export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+  <!-- SheetJS -->
+  <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+
+  <!-- Reports page logic -->
+  <script src="reports.js"></script>
+  
+</body>
+</html>
