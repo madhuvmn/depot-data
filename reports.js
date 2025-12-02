@@ -1,6 +1,5 @@
 // reports.js 
 
-
 const USER_NAMES = {
    1: "Naasina. Ankaiah",
    2: "Naasina. Vasu",
@@ -14,7 +13,7 @@ const USER_NAMES = {
    10: "వడ్లమాని. అనిల్",
    11: "వడ్లమాని. దొరసానమ్మ",
    12: "కాకుటూరి. నాగేశ్వరరావు",
-   13: "చిట్టిబోయిన. వేంకటేశ్వర్లు",
+   13: "చిట్టిబోయిన. వేంకటేశ्वర్లు",
    14: "చిట్టిబోయిన. మమత",
    15: "గిద్దలూరి. ప్రకాశ్",
    16: "కూనిశెట్టి. కళాధరరావు",
@@ -44,7 +43,9 @@ const reportFromDate = document.getElementById('report-from-date');
 const reportToDate = document.getElementById('report-to-date');
 const btnGenerateReport = document.getElementById('btn-generate-report');
 
-// Formatting helpers
+/* -------------------------
+   Formatting helpers
+   ------------------------- */
 function fmtQty(n) {
    if (!isFinite(n)) return '';
    return (Math.round(n * 10) / 10).toFixed(1);
@@ -74,11 +75,13 @@ function fmtFinalAmt(n) {
    return String(v).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 }
 
-// date helpers
+/* -------------------------
+   Date helpers
+   ------------------------- */
 function isoFromDate(d) {
-   const yyyy = d.getFullYear(),
-      mm = String(d.getMonth() + 1).padStart(2, '0'),
-      dd = String(d.getDate()).padStart(2, '0');
+   const yyyy = d.getFullYear();
+   const mm = String(d.getMonth() + 1).padStart(2, '0');
+   const dd = String(d.getDate()).padStart(2, '0');
    return `${yyyy}-${mm}-${dd}`;
 }
 
@@ -86,8 +89,8 @@ function displayDateFromISO(iso) {
    if (!iso) return '';
    const m = String(iso).match(/^(\d{4})-(\d{2})-(\d{2})$/);
    if (!m) return String(iso);
-   const day = m[3],
-      month = parseInt(m[2], 10);
+   const day = m[3];
+   const month = parseInt(m[2], 10);
    const MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
    const monName = MONTH_SHORT[month - 1] || m[2];
    return `${day}-${monName}-${m[1].slice(-2)}`;
@@ -116,7 +119,9 @@ function parseDateToISO(value) {
    return s;
 }
 
-// normalize session values
+/* -------------------------
+   Session normalization
+   ------------------------- */
 function normalizeSession(raw) {
    if (raw == null) return '';
    let s = String(raw).trim().toUpperCase().replace(/\s+/g, '');
@@ -130,7 +135,9 @@ function normalizeSession(raw) {
    return '';
 }
 
-// header mapping
+/* -------------------------
+   Header mapping
+   ------------------------- */
 function mapHeaders(headerRow) {
    const map = {};
    headerRow.forEach((h, idx) => {
@@ -156,7 +163,9 @@ function mapHeaders(headerRow) {
    return map;
 }
 
-// load workbook
+/* -------------------------
+   Load workbook -> rows[]
+   ------------------------- */
 function loadWorkbookFileToTable(file) {
    if (!file) return;
    const reader = new FileReader();
@@ -173,6 +182,7 @@ function loadWorkbookFileToTable(file) {
          alert('Failed to read file: ' + err);
          return;
       }
+
       const firstSheet = workbook.SheetNames[0];
       const ws = workbook.Sheets[firstSheet];
       if (!ws) {
@@ -209,10 +219,12 @@ function loadWorkbookFileToTable(file) {
          const row = aoa[r];
          if (!row || row.every(c => c === null || c === '')) continue;
          const obj = {};
+
          for (let c = 0; c < row.length; c++) {
             const field = mapping[c];
             if (!field) continue;
             const cell = row[c];
+
             if (field === 'date') obj.date = parseDateToISO(cell);
             else if (field === 'session') obj.session = cell == null ? '' : normalizeSession(cell);
             else if (field === 'id') {
@@ -236,8 +248,8 @@ function loadWorkbookFileToTable(file) {
          }
 
          if ((obj.amount === null || obj.amount === undefined || obj.amount === '') && obj.quantity != null && obj.percentage != null) {
-            const qn = Number(obj.quantity),
-               pn = Number(obj.percentage);
+            const qn = Number(obj.quantity);
+            const pn = Number(obj.percentage);
             const amt = (isFinite(qn) && isFinite(pn)) ? Number((qn * pn * 7.5).toFixed(2)) : null;
             obj.amount = amt;
          }
@@ -255,18 +267,24 @@ function loadWorkbookFileToTable(file) {
 
       rows = extracted;
       renderTable();
-      fileInfo.textContent = `Loaded: ${file.name} — ${rows.length} row${rows.length===1?'':'s'}.`;
+      fileInfo.textContent = `Loaded: ${file.name} — ${rows.length} row${rows.length === 1 ? '' : 's'}.`;
       fileInput.value = '';
    };
+
    reader.onerror = (err) => {
       alert('File read error: ' + err);
    };
+
    reader.readAsArrayBuffer(file);
 }
 
+/* -------------------------
+   Render HTML preview table
+   ------------------------- */
 function renderTable() {
    tableHead.innerHTML = '';
    tableBody.innerHTML = '';
+
    if (!rows || rows.length === 0) {
       rowsCount.textContent = '0 rows';
       return;
@@ -282,41 +300,51 @@ function renderTable() {
 
    rows.forEach((r, idx) => {
       const tr = document.createElement('tr');
+
       const tdSerial = document.createElement('td');
       tdSerial.textContent = idx + 1;
       tdSerial.setAttribute('data-label', 'S.No');
       tr.appendChild(tdSerial);
+
       const tdDate = document.createElement('td');
       tdDate.textContent = displayDateFromISO(r.date);
       tdDate.setAttribute('data-label', 'Date');
       tr.appendChild(tdDate);
+
       const tdSess = document.createElement('td');
       tdSess.textContent = r.session;
       tdSess.setAttribute('data-label', 'Session');
       tr.appendChild(tdSess);
+
       const tdId = document.createElement('td');
       tdId.textContent = r.id;
       tdId.setAttribute('data-label', 'User ID');
       tr.appendChild(tdId);
+
       const tdQty = document.createElement('td');
       tdQty.textContent = fmtQty(r.quantity);
       tdQty.setAttribute('data-label', 'Quantity');
       tr.appendChild(tdQty);
+
       const tdPct = document.createElement('td');
       tdPct.textContent = fmtPct(r.percentage);
       tdPct.setAttribute('data-label', 'Percentage');
       tr.appendChild(tdPct);
+
       const tdAmt = document.createElement('td');
       tdAmt.textContent = fmtAmtWithSep(r.amount);
       tdAmt.setAttribute('data-label', 'Amount');
       tr.appendChild(tdAmt);
+
       tableBody.appendChild(tr);
    });
 
-   rowsCount.textContent = `${rows.length} row${rows.length===1?'':'s'}`;
+   rowsCount.textContent = `${rows.length} row${rows.length === 1 ? '' : 's'}`;
 }
 
-// PDF generator using explicit widths and merged AM/PM header row
+/* -------------------------
+   PDF generator
+   ------------------------- */
 function generatePdfReport(data, filters) {
    if (!window.jspdf || !window.jspdf.jsPDF) {
       alert('PDF library not loaded.');
@@ -348,10 +376,12 @@ function generatePdfReport(data, filters) {
       if (!grouped[id]) grouped[id] = [];
       grouped[id].push(r);
    });
+
    const ids = Object.keys(grouped).map(Number).sort((a, b) => a - b);
 
    ids.forEach((id, idx) => {
       if (idx > 0 && idx % cardsPerPage === 0) doc.addPage();
+
       const slot = idx % cardsPerPage;
       const col = slot % cols;
       const rowIdx = Math.floor(slot / cols);
@@ -383,87 +413,86 @@ function generatePdfReport(data, filters) {
    doc.save('report.pdf');
 }
 
-// drawCardWithExplicitCols() function
+/* -------------------------
+   drawCardWithExplicitCols
+   ------------------------- */
 function drawCardWithExplicitCols(doc, x, y, w, h, id, dateKeys, datesMap, filters) {
    const pad = 4;
+
    // outer border
    doc.setLineWidth(0.9);
    doc.rect(x, y, w, h);
    doc.setLineWidth(0.2);
 
-   // Layout: slightly reduced header box height
-   const headerH = 18; // header (ID/From/To + name)
-   const subHeaderH = 18; // reduced height for header boxes (was larger before)
+   const headerH = 18;
+   const subHeaderH = 12;
    const footerH = 30;
-   const tableTop = y + headerH + subHeaderH; // top of data rows
+   const tableTop = y + headerH + subHeaderH;
    const tableBottom = y + h - footerH;
 
-   // Header (ID / From / To / Name)
    const name = getUserNameById(id) || '';
    const allDates = dateKeys.filter(Boolean);
    const minDate = filters.fromDate || (allDates[0] || '');
    const maxDate = filters.toDate || (allDates[allDates.length - 1] || '');
 
-   doc.setFontSize(9);
-   doc.setFont(undefined, 'normal');
+   doc.setFontSize(11);
+   doc.setFont(undefined, 'bold');
+
    doc.text(`ID: ${id}`, x + pad, y + 6);
-   if (minDate) doc.text(`From: ${displayDateFromISO(minDate)}`, x + w / 2, y + 6, {
-      align: 'center'
+   doc.text(`Name: ${name || '—'}`, x + pad, y + 12, {
+      align: 'left'
    });
-   if (maxDate) doc.text(`To: ${displayDateFromISO(maxDate)}`, x + w - pad, y + 6, {
+
+   doc.setFont(undefined, 'normal');
+   doc.setFontSize(9);
+
+   if (minDate) doc.text(`From: ${displayDateFromISO(minDate)}`, x + w - pad, y + 6, {
+      align: 'right'
+   });
+   if (maxDate) doc.text(`To: ${displayDateFromISO(maxDate)}`, x + w - pad, y + 12, {
       align: 'right'
    });
 
-   doc.setFontSize(11);
-   doc.text(name || '—', x + w / 2, y + 14, {
-      align: 'center'
-   });
-
-   // thin separator after main header area
+   // thin separator after header
    doc.line(x, y + headerH, x + w, y + headerH);
 
-   // explicit column widths (user provided)
    const innerX = x + pad;
    const innerW = w - pad * 2;
 
    const colDateW = 12;
-   const colAMQtyW = 12;
-   const colAMPctW = 12;
+   const colAMQtyW = 15;
+   const colAMPctW = 15;
    const colAMAmtW = 15;
-   const colPMQtyW = 12;
-   const colPMPctW = 12;
+   const colPMQtyW = 15;
+   const colPMPctW = 15;
    const colPMAmtW = 15;
 
-   // scale if needed
    const totalExplicit = colDateW + colAMQtyW + colAMPctW + colAMAmtW + colPMQtyW + colPMPctW + colPMAmtW;
    let scale = 1;
    if (totalExplicit > innerW) scale = innerW / totalExplicit;
    const dW = (v) => v * scale;
 
-   // compute cumulative X positions, rounded to avoid fractional stroke gaps
    const pos = [];
    let cur = innerX;
-   pos.push(Number(cur.toFixed(2))); // left edge (innerX)
+   pos.push(Number(cur.toFixed(2)));
    cur += dW(colDateW);
-   pos.push(Number(cur.toFixed(2))); // after DATE
+   pos.push(Number(cur.toFixed(2)));
    cur += dW(colAMQtyW);
-   pos.push(Number(cur.toFixed(2))); // after AM Qty
+   pos.push(Number(cur.toFixed(2)));
    cur += dW(colAMPctW);
-   pos.push(Number(cur.toFixed(2))); // after AM Pct
+   pos.push(Number(cur.toFixed(2)));
    cur += dW(colAMAmtW);
-   pos.push(Number(cur.toFixed(2))); // after AM Amt
+   pos.push(Number(cur.toFixed(2)));
    cur += dW(colPMQtyW);
-   pos.push(Number(cur.toFixed(2))); // after PM Qty
+   pos.push(Number(cur.toFixed(2)));
    cur += dW(colPMPctW);
-   pos.push(Number(cur.toFixed(2))); // after PM Pct
+   pos.push(Number(cur.toFixed(2)));
    cur += dW(colPMAmtW);
-   pos.push(Number(cur.toFixed(2))); // right edge
+   pos.push(Number(cur.toFixed(2)));
 
-   // draw table outer rect for data area
    doc.setLineWidth(0.2);
    doc.rect(innerX, tableTop, innerW, tableBottom - tableTop);
 
-   // draw vertical separators for data area
    doc.setLineWidth(0.35);
    for (let i = 1; i <= 6; i++) {
       const vx = pos[i];
@@ -471,38 +500,30 @@ function drawCardWithExplicitCols(doc, x, y, w, h, id, dateKeys, datesMap, filte
    }
    doc.setLineWidth(0.2);
 
-   // header area positions
    const hdrTop = y + headerH;
-   const hdrSub = hdrTop + subHeaderH; // bottom of header area equals tableTop
+   const hdrSub = hdrTop + subHeaderH;
 
-   // draw horizontal delimiters for header area
    doc.line(innerX, hdrTop, innerX + innerW, hdrTop);
    doc.line(innerX, hdrSub, innerX + innerW, hdrSub);
 
-   // ----- Draw boxed header cells (trimmed height) -----
    doc.setLineWidth(0.35);
    for (let i = 0; i < 7; i++) {
       const left = pos[i];
       const right = pos[i + 1];
       const width = right - left;
-      // draw rectangle for header cell
       doc.rect(left, hdrTop, width, hdrSub - hdrTop);
    }
    doc.setLineWidth(0.2);
 
-   // ----- Header text: bold and wrapped, centered in each header cell -----
-   doc.setFontSize(7);
-   doc.setFont(undefined, 'bold');
+   doc.setFontSize(8);
 
-   // helper to draw wrapped, centered text in a rectangular header cell
    function drawWrappedCentered(text, left, right, top, bottom) {
-      const boxW = right - left - 2; // small horizontal padding
+      const boxW = right - left - 2;
       const lines = doc.splitTextToSize(String(text), boxW);
-      const lineH = 3.2; // approximate line height in mm for fontsize 7
+      const lineH = 3.2;
       const totalH = lines.length * lineH;
       const centerY = top + (bottom - top) / 2;
-      // starting Y so block is vertically centered
-      let startY = centerY - (totalH / 2) + (lineH - 1.2); // minor tweak for visual centering
+      let startY = centerY - (totalH / 2) + (lineH - 1.2);
       for (let i = 0; i < lines.length; i++) {
          doc.text(lines[i], left + (right - left) / 2, startY + i * lineH, {
             align: 'center'
@@ -510,23 +531,16 @@ function drawCardWithExplicitCols(doc, x, y, w, h, id, dateKeys, datesMap, filte
       }
    }
 
-   // DATE
    drawWrappedCentered('DATE', pos[0], pos[1], hdrTop, hdrSub);
-
-   // AM columns: Quantity, Percentage, Amount
    drawWrappedCentered('Quantity', pos[1], pos[2], hdrTop, hdrSub);
    drawWrappedCentered('Percentage', pos[2], pos[3], hdrTop, hdrSub);
    drawWrappedCentered('Amount', pos[3], pos[4], hdrTop, hdrSub);
-
-   // PM columns
    drawWrappedCentered('Quantity', pos[4], pos[5], hdrTop, hdrSub);
    drawWrappedCentered('Percentage', pos[5], pos[6], hdrTop, hdrSub);
    drawWrappedCentered('Amount', pos[6], pos[7], hdrTop, hdrSub);
 
-   // restore normal font for body
+   // body rows
    doc.setFont(undefined, 'normal');
-
-   // rows area (15 rows)
    const rowsToShow = 15;
    const usableH = tableBottom - tableTop;
    const rowH = usableH / rowsToShow;
@@ -534,14 +548,12 @@ function drawCardWithExplicitCols(doc, x, y, w, h, id, dateKeys, datesMap, filte
    let totalQty = 0;
    let totalAmt = 0;
 
-   // right-edge positions for right-aligned text with small padding
-   const padRight = 1.5;
    const qtyCenterAM = pos[1] + (pos[2] - pos[1]) / 2;
+   const pctCenterAM = pos[2] + (pos[3] - pos[2]) / 2;
+   const amtCenterAM = pos[3] + (pos[4] - pos[3]) / 2;
    const qtyCenterPM = pos[4] + (pos[5] - pos[4]) / 2;
-   const pctRightAM = pos[2] + (pos[3] - pos[2]) - padRight;
-   const amtRightAM = pos[3] + (pos[4] - pos[3]) - padRight;
-   const pctRightPM = pos[5] + (pos[6] - pos[5]) - padRight;
-   const amtRightPM = pos[6] + (pos[7] - pos[6]) - padRight;
+   const pctCenterPM = pos[5] + (pos[6] - pos[5]) / 2;
+   const amtCenterPM = pos[6] + (pos[7] - pos[6]) / 2;
 
    doc.setFontSize(7.5);
    for (let i = 0; i < rowsToShow; i++) {
@@ -566,11 +578,11 @@ function drawCardWithExplicitCols(doc, x, y, w, h, id, dateKeys, datesMap, filte
          doc.text(fmtQty(amObj.quantity), qtyCenterAM, midY, {
             align: 'center'
          });
-         doc.text(fmtPct(amObj.percentage), pctRightAM, midY, {
-            align: 'right'
+         doc.text(fmtPct(amObj.percentage), pctCenterAM, midY, {
+            align: 'center'
          });
-         doc.text(fmtAmtWithSep(amObj.amount), amtRightAM, midY, {
-            align: 'right'
+         doc.text(fmtAmtWithSep(amObj.amount), amtCenterAM, midY, {
+            align: 'center'
          });
          totalQty += Number(amObj.quantity) || 0;
          totalAmt += Number(amObj.amount) || 0;
@@ -580,22 +592,21 @@ function drawCardWithExplicitCols(doc, x, y, w, h, id, dateKeys, datesMap, filte
          doc.text(fmtQty(pmObj.quantity), qtyCenterPM, midY, {
             align: 'center'
          });
-         doc.text(fmtPct(pmObj.percentage), pctRightPM, midY, {
-            align: 'right'
+         doc.text(fmtPct(pmObj.percentage), pctCenterPM, midY, {
+            align: 'center'
          });
-         doc.text(fmtAmtWithSep(pmObj.amount), amtRightPM, midY, {
-            align: 'right'
+         doc.text(fmtAmtWithSep(pmObj.amount), amtCenterPM, midY, {
+            align: 'center'
          });
          totalQty += Number(pmObj.quantity) || 0;
          totalAmt += Number(pmObj.amount) || 0;
       }
 
-      // horizontal grid line
       cursorY += rowH;
       doc.line(innerX, cursorY, innerX + innerW, cursorY);
    }
 
-   // ----- Footer totals with boxed border -----
+   // footer totals
    const footerTop = tableBottom;
    doc.setLineWidth(0.3);
    doc.line(x, footerTop, x + w, footerTop);
@@ -603,35 +614,25 @@ function drawCardWithExplicitCols(doc, x, y, w, h, id, dateKeys, datesMap, filte
    doc.setFontSize(9);
    const leftX = x + pad + 2;
    const rightX = x + w - pad - 2;
-
-   // ----- Footer totals aligned as per the requirement -----
-
-   // compute a right margin area for alignment
-   const totalsRight = x + w - pad - 4; // consistent right alignment anchor
+   const totalsRight = x + w - pad - 4;
    const totalsLeft = x + pad + 2;
    const totalsCenter = (totalsLeft + totalsRight) / 2;
 
-   doc.setFontSize(9);
    doc.setFont(undefined, 'normal');
 
-   // Advance / Loan
-   doc.setTextColor(255, 0, 0);
-   doc.text(`Advance or Loan amount: 0`, totalsLeft, footerTop + 5, {
+   doc.text(`Total Milk in liters: ${(Math.round(totalQty * 10) / 10).toFixed(1)}`, totalsLeft, footerTop + 5, {
       align: 'left'
+   });
+   doc.text(`Total Amount: ${fmtAmtWithSep(totalAmt)}`, totalsLeft, footerTop + 10, {
+      align: 'left'
+   });
+
+   doc.setTextColor(255, 0, 0);
+   doc.text(`Recovery: 0`, totalsRight, footerTop + 5, {
+      align: 'right'
    });
    doc.setTextColor(0, 0, 0);
 
-   // Total Milk in liters
-   doc.text(`Total Milk in liters: ${(Math.round(totalQty*10)/10).toFixed(1)}`, totalsRight, footerTop + 5, {
-      align: 'right'
-   });
-
-   // Total Amount
-   doc.text(`Total Amount: ${fmtAmtWithSep(totalAmt)}`, totalsRight, footerTop + 10, {
-      align: 'right'
-   });
-
-   // Final Amount bold
    doc.setFontSize(15);
    doc.setFont(undefined, 'bold');
    doc.text(`Final Amount: ${fmtFinalAmt(totalAmt)}`, totalsCenter, footerTop + 20, {
@@ -639,15 +640,17 @@ function drawCardWithExplicitCols(doc, x, y, w, h, id, dateKeys, datesMap, filte
    });
 
    doc.setFont(undefined, 'normal');
-
 }
 
-// Events
+/* -------------------------
+   Events
+   ------------------------- */
 fileInput.addEventListener('change', (evt) => {
    const f = evt.target.files && evt.target.files[0];
    if (!f) return;
    loadWorkbookFileToTable(f);
 });
+
 document.addEventListener('dragover', (e) => e.preventDefault());
 document.addEventListener('drop', (e) => {
    e.preventDefault();
