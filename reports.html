@@ -28,27 +28,8 @@
         Tip: Select an Excel file exported from the main app. The first sheet will be previewed and used to generate ID-wise PDF slips.
       </div>
     </section>
-
-    <!-- TABLE PREVIEW -->
-    <section class="card">
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;flex-wrap:wrap">
-        <div class="section-title" style="margin-bottom:0;flex:1 0 100%">
-          Table preview (first sheet)
-        </div>
-        <div id="rows-count" class="small-muted rows-count" style="margin-left:10px"></div>
-      </div>
-
-      <div class="preview-scroll">
-        <div class="table-wrap">
-          <table id="data-table" class="responsive-table" role="table" aria-label="Data table">
-            <thead id="table-head"></thead>
-            <tbody id="table-body"></tbody>
-          </table>
-        </div>
-      </div>
-    </section>
-
-    <!-- REPORT SECTION -->
+	
+	 <!-- REPORT SECTION -->
     <section class="card">
       <div class="section-title">Generate PDF Report</div>
 
@@ -79,6 +60,28 @@
         Leave fields empty to include all IDs / all dates.
       </div>
     </section>
+	
+	
+    <!-- TABLE PREVIEW -->
+    <section class="card">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;flex-wrap:wrap">
+        <div class="section-title" style="margin-bottom:0;flex:1 0 100%">
+          Table preview (first sheet)
+        </div>
+        <div id="rows-count" class="small-muted rows-count" style="margin-left:10px"></div>
+      </div>
+
+      <div class="preview-scroll">
+        <div class="table-wrap">
+          <table id="data-table" class="responsive-table" role="table" aria-label="Data table">
+            <thead id="table-head"></thead>
+            <tbody id="table-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+   
 
     <footer style="text-align:center; color:var(--muted); font-size:13px; margin-top:8px">
       Tip: Scroll horizontally on small screens to see all columns. On mobile, rows show as cards.
