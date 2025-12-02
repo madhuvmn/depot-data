@@ -682,3 +682,27 @@ button.btn-copy:hover {
 
 }
 
+/* --- Mobile: keep inputs same size but don't disable native picker --- */
+@media (max-width: 520px) {
+  input[type="date"],
+  input[type="number"],
+  input[type="text"] {
+    height: 42px !important;
+    min-height: 42px !important;
+    line-height: 42px !important;
+    padding: 6px 12px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box;
+    /* DO NOT force appearance:none here — let the browser show its picker */
+    /* -webkit-appearance: none !important; */
+  }
+
+  /* Make sure the native calendar indicator stays visible and clickable */
+  input[type="date"]::-webkit-calendar-picker-indicator {
+    display: inline-block;
+    opacity: 1;
+    cursor: pointer;
+    /* don't transform or style it too much; leave default */
+  }
+}
