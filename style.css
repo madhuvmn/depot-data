@@ -682,8 +682,3 @@ button.btn-copy:hover {
 
 }
 
-@media (max-width: 520px) {
-  input[type="date"] {
-    padding-right: 4px !important;
-  }
-}
