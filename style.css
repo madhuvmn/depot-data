@@ -679,4 +679,14 @@ button.btn-copy:hover {
 	.file-row.file-input-wrap a {
 		margin-top: 6px;
 	}
+
+}
+
+/* Normalize input height on mobile (date inputs look bigger by default) */
+@media (max-width: 520px) {
+  input[type="date"],
+  input[type="number"],
+  input[type="text"] {
+    height: 42px;       /* same height for all inputs */
+  }
 }
