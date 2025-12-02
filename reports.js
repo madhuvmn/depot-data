@@ -1,36 +1,55 @@
-// reports.js 
+//--------------------------
+// ++++++ reports.js +++++++
+//--------------------------
 
+/**
+ * USER ID -> NAME mapping
+ * Use getUserNameById(id) to safely lookup a name (returns empty string if not found).
+ */
 const USER_NAMES = {
    1: "Naasina. Ankaiah",
    2: "Naasina. Vasu",
    3: "Naasina. Sampoornamma",
    4: "Gedde. Kondaiah",
-   5: "కుట్టుబోయిన. వరలక్ష్మమ్మ",
-   6: "వెలినేని. సుగుణమ్మ",
-   7: "వడ్లమాని. రాఘవులు నాయుడు",
-   8: "వెలినేని. రవణమ్మ",
-   9: "వడ్లమాని. అల్లిబాబు",
-   10: "వడ్లమాని. అనిల్",
-   11: "వడ్లమాని. దొరసానమ్మ",
-   12: "కాకుటూరి. నాగేశ్వరరావు",
-   13: "చిట్టిబోయిన. వేంకటేశ्वర్లు",
-   14: "చిట్టిబోయిన. మమత",
-   15: "గిద్దలూరి. ప్రకాశ్",
-   16: "కూనిశెట్టి. కళాధరరావు",
-   17: "వడ్లమాని. బుజ్జయ్య",
+   5: "Kuttuboyina. Varalakshmamma",
+   6: "Velineni. Sugunamma",
+   7: "Vadlamani. Raghavulu Naidu",
+   8: "Velineni. Ravanamma",
+   9: "Vadlamani. Alli Babu",
+   10: "Vadlamani. Anil",
+   11: "Vadlamani. Dorasanamma",
+   12: "Kakuturi. Nageswara Rao",
+   13: "Chittiboyina. Venkateswarlu",
+   14: "Chittiboyina. Mamatha",
+   15: "Giddaluri. Prakash",
+   16: "Koonisetty. Kaladhara Rao",
+   17: "Vadlamani. Bujjaiah",
    18: "N/A",
    19: "N/A",
    20: "N/A"
 };
 
+/**
+ * getUserNameById
+ * ----------------
+ * Safe lookup for USER_NAMES. Converts id to Number and returns mapped name or empty string.
+ *
+ * @param {number|string} id - user id (number or numeric string)
+ * @returns {string} - user name or empty string
+ */
 function getUserNameById(id) {
    const n = Number(id);
    return USER_NAMES[n] || "";
 }
 
+/* -------------------------
+   Application data
+   ------------------------- */
 let rows = [];
 
-// DOM refs
+/* -------------------------
+   DOM references
+   ------------------------- */
 const fileInput = document.getElementById('file-input');
 const fileInfo = document.getElementById('file-info');
 const tableHead = document.getElementById('table-head');
@@ -43,24 +62,39 @@ const reportFromDate = document.getElementById('report-from-date');
 const reportToDate = document.getElementById('report-to-date');
 const btnGenerateReport = document.getElementById('btn-generate-report');
 
-/* -------------------------
-   Formatting helpers
-   ------------------------- */
+/* ------------ Formatting helpers ------------- */
+
+/**
+ * fmtQty
+ * Format a quantity to 1 decimal place (returns empty string for invalid input).
+ */
 function fmtQty(n) {
    if (!isFinite(n)) return '';
    return (Math.round(n * 10) / 10).toFixed(1);
 }
 
+/**
+ * fmtPct
+ * Format a percentage to 1 decimal place (returns empty string for invalid input).
+ */
 function fmtPct(n) {
    if (!isFinite(n)) return '';
    return (Math.round(n * 10) / 10).toFixed(1);
 }
 
+/**
+ * fmtAmt
+ * Format an amount to 2 decimal places (returns empty string for invalid input).
+ */
 function fmtAmt(n) {
    if (!isFinite(n)) return '';
    return (Math.round(n * 100) / 100).toFixed(2);
 }
 
+/**
+ * fmtAmtWithSep
+ * Format amount with thousands separators and two decimal places.
+ */
 function fmtAmtWithSep(n) {
    if (!isFinite(n)) return '';
    const s = (Math.round(n * 100) / 100).toFixed(2);
@@ -69,15 +103,22 @@ function fmtAmtWithSep(n) {
    return parts.join('.');
 }
 
+/**
+ * fmtFinalAmt
+ * Round to nearest integer and add thousands separator (used for final display).
+ */
 function fmtFinalAmt(n) {
    if (!isFinite(n)) return '';
    const v = Math.round(n);
    return String(v).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 }
 
-/* -------------------------
-   Date helpers
-   ------------------------- */
+/* ------------ Date helpers ------------- */
+
+/**
+ * isoFromDate
+ * Convert Date object to yyyy-mm-dd string.
+ */
 function isoFromDate(d) {
    const yyyy = d.getFullYear();
    const mm = String(d.getMonth() + 1).padStart(2, '0');
@@ -85,6 +126,11 @@ function isoFromDate(d) {
    return `${yyyy}-${mm}-${dd}`;
 }
 
+/**
+ * displayDateFromISO
+ * Convert ISO yyyy-mm-dd to human short format dd-Mon-yy (e.g. 01-Nov-25).
+ * If input doesn't match ISO pattern, returns the input as string.
+ */
 function displayDateFromISO(iso) {
    if (!iso) return '';
    const m = String(iso).match(/^(\d{4})-(\d{2})-(\d{2})$/);
@@ -96,6 +142,11 @@ function displayDateFromISO(iso) {
    return `${day}-${monName}-${m[1].slice(-2)}`;
 }
 
+/**
+ * parseDateToISO
+ * Accepts Date, Excel serial (number), or common date string formats and returns yyyy-mm-dd.
+ * If parsing fails, returns the original string.
+ */
 function parseDateToISO(value) {
    if (value instanceof Date && !isNaN(value)) return isoFromDate(value);
    if (typeof value === 'number') {
@@ -119,9 +170,13 @@ function parseDateToISO(value) {
    return s;
 }
 
-/* -------------------------
-   Session normalization
-   ------------------------- */
+/* ------------ Session normalization ------------- */
+
+/**
+ * normalizeSession
+ * Normalize various session representations (e.g., 'am', 'A.M.', '1') to either 'AM' or 'PM'.
+ * Returns empty string if not recognizable.
+ */
 function normalizeSession(raw) {
    if (raw == null) return '';
    let s = String(raw).trim().toUpperCase().replace(/\s+/g, '');
@@ -135,9 +190,13 @@ function normalizeSession(raw) {
    return '';
 }
 
-/* -------------------------
-   Header mapping
-   ------------------------- */
+/* ----------- Header mapping ----------- */
+
+/**
+ * mapHeaders
+ * Map header row strings (from sheet) to internal field names.
+ * Returns an object mapping columnIndex -> fieldName.
+ */
 function mapHeaders(headerRow) {
    const map = {};
    headerRow.forEach((h, idx) => {
@@ -163,9 +222,10 @@ function mapHeaders(headerRow) {
    return map;
 }
 
-/* -------------------------
-   Load workbook -> rows[]
-   ------------------------- */
+/* ------------- Load workbook -> rows[] -------------
+   Reads an uploaded Excel file (SheetJS/XLSX required),
+   maps headers, parses rows and normalizes values into `rows[]`.
+*/
 function loadWorkbookFileToTable(file) {
    if (!file) return;
    const reader = new FileReader();
@@ -278,9 +338,9 @@ function loadWorkbookFileToTable(file) {
    reader.readAsArrayBuffer(file);
 }
 
-/* -------------------------
-   Render HTML preview table
-   ------------------------- */
+/* ------------ Render HTML preview table -------------
+   Builds the table header and body from `rows[]` for preview in the page.
+*/
 function renderTable() {
    tableHead.innerHTML = '';
    tableBody.innerHTML = '';
@@ -342,87 +402,120 @@ function renderTable() {
    rowsCount.textContent = `${rows.length} row${rows.length === 1 ? '' : 's'}`;
 }
 
-/* -------------------------
-   PDF generator
-   ------------------------- */
+/* -------------- PDF generator -------------
+   generatePdfReport(data, filters)
+   - data: array of rows (grouped by id inside function)
+   - filters: optional object { idMin, idMax, fromDate, toDate }
+   Renders 2x2 cards per page, draws tiled cards and then adds dotted cut guides on every page.
+*/
 function generatePdfReport(data, filters) {
-   if (!window.jspdf || !window.jspdf.jsPDF) {
-      alert('PDF library not loaded.');
-      return;
-   }
-   const {
-      jsPDF
-   } = window.jspdf;
-   const doc = new jsPDF({
-      orientation: 'portrait',
-      unit: 'mm',
-      format: 'a4'
-   });
+  if (!window.jspdf || !window.jspdf.jsPDF) {
+    alert('PDF library not loaded.');
+    return;
+  }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
-   const pageW = doc.internal.pageSize.getWidth();
-   const pageH = doc.internal.pageSize.getHeight();
-   const margin = 6;
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+  const margin = 6;
 
-   const cols = 2,
-      rowsPerPage = 2,
-      cardsPerPage = cols * rowsPerPage;
-   const cardW = (pageW - margin * 2) / cols;
-   const cardH = (pageH - margin * 2) / rowsPerPage;
+  // spacing between cards (adjust as needed)
+  const gapX = 6; // horizontal gap between cards
+  const gapY = 6; // vertical gap between cards
 
-   // group by ID
-   const grouped = {};
-   data.forEach(r => {
-      const id = r.id;
-      if (!grouped[id]) grouped[id] = [];
-      grouped[id].push(r);
-   });
+  const cols = 2;
+  const rowsPerPage = 2;
+  const cardsPerPage = cols * rowsPerPage;
 
-   const ids = Object.keys(grouped).map(Number).sort((a, b) => a - b);
+  // card size reduced to account for gaps
+  const cardW = ((pageW - margin * 2) - gapX) / cols;
+  const cardH = ((pageH - margin * 2) - gapY) / rowsPerPage;
 
-   ids.forEach((id, idx) => {
-      if (idx > 0 && idx % cardsPerPage === 0) doc.addPage();
+  // group rows by ID
+  const grouped = {};
+  data.forEach(r => {
+    const id = r.id;
+    if (!grouped[id]) grouped[id] = [];
+    grouped[id].push(r);
+  });
 
-      const slot = idx % cardsPerPage;
-      const col = slot % cols;
-      const rowIdx = Math.floor(slot / cols);
-      const x0 = margin + col * cardW;
-      const y0 = margin + rowIdx * cardH;
+  const ids = Object.keys(grouped).map(Number).sort((a, b) => a - b);
 
-      const idRows = grouped[id].slice();
-      idRows.sort((a, b) => (a.date < b.date ? -1 : (a.date > b.date ? 1 : 0)));
+  // render cards (may add pages)
+  ids.forEach((id, idx) => {
+    if (idx > 0 && idx % cardsPerPage === 0) doc.addPage();
 
-      const datesMap = {};
-      idRows.forEach(r => {
-         const dt = r.date || '';
-         if (!datesMap[dt]) datesMap[dt] = {
-            AM: null,
-            PM: null
-         };
-         const s = r.session === 'AM' ? 'AM' : (r.session === 'PM' ? 'PM' : '');
-         if (s === 'AM' || s === 'PM') datesMap[dt][s] = r;
-         else {
-            if (!datesMap[dt].AM) datesMap[dt].AM = r;
-            else if (!datesMap[dt].PM) datesMap[dt].PM = r;
-         }
-      });
+    const slot = idx % cardsPerPage;
+    const col = slot % cols;
+    const rowIdx = Math.floor(slot / cols);
 
-      const dateKeys = Object.keys(datesMap).sort();
-      drawCardWithExplicitCols(doc, x0, y0, cardW, cardH, id, dateKeys, datesMap, filters);
-   });
+    // position accounts for gap spacing
+    const x0 = margin + col * (cardW + gapX);
+    const y0 = margin + rowIdx * (cardH + gapY);
 
-   doc.save('report.pdf');
+    const idRows = grouped[id].slice();
+    idRows.sort((a, b) => (a.date < b.date ? -1 : (a.date > b.date ? 1 : 0)));
+
+    const datesMap = {};
+    idRows.forEach(r => {
+      const dt = r.date || '';
+      if (!datesMap[dt]) datesMap[dt] = { AM: null, PM: null };
+      const s = r.session === 'AM' ? 'AM' : (r.session === 'PM' ? 'PM' : '');
+      if (s === 'AM' || s === 'PM') datesMap[dt][s] = r;
+      else {
+        if (!datesMap[dt].AM) datesMap[dt].AM = r;
+        else if (!datesMap[dt].PM) datesMap[dt].PM = r;
+      }
+    });
+
+    const dateKeys = Object.keys(datesMap).sort();
+    drawCardWithExplicitCols(doc, x0, y0, cardW, cardH, id, dateKeys, datesMap, filters);
+  });
+
+  // ---------------------------
+  // Draw dotted cut guides on EVERY page (no scissors)
+  // Ensures dashed style is set per page so jsPDF doesn't accidentally render solid lines.
+  // ---------------------------
+  const totalPages = typeof doc.getNumberOfPages === 'function'
+    ? doc.getNumberOfPages()
+    : (doc.internal && typeof doc.internal.getNumberOfPages === 'function' ? doc.internal.getNumberOfPages() : 1);
+
+  // compute cut line positions (centered inside the gap between cards)
+  const cutX = margin + cardW + gapX / 2;
+  const cutY = margin + cardH + gapY / 2;
+
+  for (let p = 1; p <= totalPages; p++) {
+    doc.setPage(p);
+
+    // apply dashed stroke for this page explicitly
+    doc.setLineDash([1.5, 2]); // dash/gap in mm (tweak to taste)
+    doc.setLineWidth(0.2);
+
+    // vertical dotted line (full height between margins)
+    doc.line(cutX, margin, cutX, pageH - margin);
+
+    // horizontal dotted line (full width between margins)
+    doc.line(margin, cutY, pageW - margin, cutY);
+
+    // reset dash so subsequent drawing uses solid strokes
+    doc.setLineDash([]);
+  }
+
+  doc.save('report.pdf');
 }
 
-/* -------------------------
-   drawCardWithExplicitCols
-   ------------------------- */
+/* ------------- drawCardWithExplicitCols -------------
+   Draws the card (single user report) at given x,y with width w and height h.
+   Uses explicit column widths and renders header, 15 rows, totals and final amount.
+*/
 function drawCardWithExplicitCols(doc, x, y, w, h, id, dateKeys, datesMap, filters) {
    const pad = 4;
 
-   // outer border
-   doc.setLineWidth(0.9);
+   // outer border (thin)
+   doc.setLineWidth(0.25);
    doc.rect(x, y, w, h);
-   doc.setLineWidth(0.2);
+   doc.setLineWidth(0.2);    // restore thin inner grid lines
 
    const headerH = 18;
    const subHeaderH = 12;
@@ -438,6 +531,7 @@ function drawCardWithExplicitCols(doc, x, y, w, h, id, dateKeys, datesMap, filte
    doc.setFontSize(11);
    doc.setFont(undefined, 'bold');
 
+   // Header text (ID and Name)
    doc.text(`ID: ${id}`, x + pad, y + 6);
    doc.text(`Name: ${name || '—'}`, x + pad, y + 12, {
       align: 'left'
@@ -446,6 +540,7 @@ function drawCardWithExplicitCols(doc, x, y, w, h, id, dateKeys, datesMap, filte
    doc.setFont(undefined, 'normal');
    doc.setFontSize(9);
 
+   // Optional From/To dates at top-right of card
    if (minDate) doc.text(`From: ${displayDateFromISO(minDate)}`, x + w - pad, y + 6, {
       align: 'right'
    });
@@ -456,6 +551,7 @@ function drawCardWithExplicitCols(doc, x, y, w, h, id, dateKeys, datesMap, filte
    // thin separator after header
    doc.line(x, y + headerH, x + w, y + headerH);
 
+   // layout and column widths (explicit)
    const innerX = x + pad;
    const innerW = w - pad * 2;
 
@@ -472,6 +568,7 @@ function drawCardWithExplicitCols(doc, x, y, w, h, id, dateKeys, datesMap, filte
    if (totalExplicit > innerW) scale = innerW / totalExplicit;
    const dW = (v) => v * scale;
 
+   // cumulative positions for vertical lines
    const pos = [];
    let cur = innerX;
    pos.push(Number(cur.toFixed(2)));
@@ -490,10 +587,12 @@ function drawCardWithExplicitCols(doc, x, y, w, h, id, dateKeys, datesMap, filte
    cur += dW(colPMAmtW);
    pos.push(Number(cur.toFixed(2)));
 
+   // outer table rect
    doc.setLineWidth(0.2);
    doc.rect(innerX, tableTop, innerW, tableBottom - tableTop);
 
-   doc.setLineWidth(0.35);
+   // vertical separators
+   doc.setLineWidth(0.25);
    for (let i = 1; i <= 6; i++) {
       const vx = pos[i];
       doc.line(vx, tableTop, vx, tableBottom);
@@ -503,10 +602,12 @@ function drawCardWithExplicitCols(doc, x, y, w, h, id, dateKeys, datesMap, filte
    const hdrTop = y + headerH;
    const hdrSub = hdrTop + subHeaderH;
 
+   // header horizontal delimiters
    doc.line(innerX, hdrTop, innerX + innerW, hdrTop);
    doc.line(innerX, hdrSub, innerX + innerW, hdrSub);
 
-   doc.setLineWidth(0.35);
+   // draw header boxes
+   doc.setLineWidth(0.25);
    for (let i = 0; i < 7; i++) {
       const left = pos[i];
       const right = pos[i + 1];
@@ -517,6 +618,10 @@ function drawCardWithExplicitCols(doc, x, y, w, h, id, dateKeys, datesMap, filte
 
    doc.setFontSize(8);
 
+   /**
+    * drawWrappedCentered
+    * Helper to wrap and center text inside a rectangular header cell.
+    */
    function drawWrappedCentered(text, left, right, top, bottom) {
       const boxW = right - left - 2;
       const lines = doc.splitTextToSize(String(text), boxW);
@@ -531,6 +636,7 @@ function drawCardWithExplicitCols(doc, x, y, w, h, id, dateKeys, datesMap, filte
       }
    }
 
+   // header labels
    drawWrappedCentered('DATE', pos[0], pos[1], hdrTop, hdrSub);
    drawWrappedCentered('Quantity', pos[1], pos[2], hdrTop, hdrSub);
    drawWrappedCentered('Percentage', pos[2], pos[3], hdrTop, hdrSub);
@@ -608,7 +714,7 @@ function drawCardWithExplicitCols(doc, x, y, w, h, id, dateKeys, datesMap, filte
 
    // footer totals
    const footerTop = tableBottom;
-   doc.setLineWidth(0.3);
+   doc.setLineWidth(0.25);
    doc.line(x, footerTop, x + w, footerTop);
 
    doc.setFontSize(9);
@@ -642,15 +748,20 @@ function drawCardWithExplicitCols(doc, x, y, w, h, id, dateKeys, datesMap, filte
    doc.setFont(undefined, 'normal');
 }
 
-/* -------------------------
-   Events
-   ------------------------- */
+/* --------- Events --------- */
+
+/**
+ * File input change -> load workbook and render preview table
+ */
 fileInput.addEventListener('change', (evt) => {
    const f = evt.target.files && evt.target.files[0];
    if (!f) return;
    loadWorkbookFileToTable(f);
 });
 
+/**
+ * Drag and drop support for file upload
+ */
 document.addEventListener('dragover', (e) => e.preventDefault());
 document.addEventListener('drop', (e) => {
    e.preventDefault();
@@ -658,6 +769,10 @@ document.addEventListener('drop', (e) => {
    if (f) loadWorkbookFileToTable(f);
 });
 
+/**
+ * Generate button: validate filters, apply them to rows, and generate PDF.
+ * Resets filter inputs after generation.
+ */
 btnGenerateReport.addEventListener('click', () => {
    if (!rows.length) {
       alert('No data loaded. Please upload a file first.');
@@ -719,5 +834,7 @@ btnGenerateReport.addEventListener('click', () => {
    reportToDate.value = '';
 });
 
-// initial render
+/* -------------------------
+   Initial rendering
+   ------------------------- */
 renderTable();
