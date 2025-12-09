@@ -42,6 +42,52 @@ function getUserNameById(id) {
   return USER_NAMES[n] || "";
 }
 
+/**
+ * getUserImagePath
+ * ----------------
+ * Returns the image path for a given user id.
+ * Example: id 1 -> 'Image1.jpg', id 2 -> 'Image2.jpg'
+ *
+ * Adjust this if your images are in a subfolder, e.g. 'images/Image1.jpg'.
+ */
+function getUserImagePath(id) {
+  const n = Number(id);
+  if (!Number.isFinite(n)) return null;
+  // Images assumed to be beside the HTML file (or adjust as needed)
+  return `Images/Image${n}.jpg`;
+}
+
+/**
+ * loadImageAsDataUrl
+ * ------------------
+ * Loads an image via fetch and returns a Promise that resolves to a DataURL string.
+ * If the image fails to load (404, CORS, etc.), resolves to null.
+ */
+function loadImageAsDataUrl(path) {
+  return new Promise((resolve) => {
+    if (!path) {
+      resolve(null);
+      return;
+    }
+
+    fetch(path)
+      .then(res => {
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.blob();
+      })
+      .then(blob => {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve(e.target.result);
+        reader.onerror = () => resolve(null);
+        reader.readAsDataURL(blob);
+      })
+      .catch(() => {
+        // Image not found or cannot be loaded; skip
+        resolve(null);
+      });
+  });
+}
+
 /* -------------------------
    Application data
    ------------------------- */
@@ -476,7 +522,7 @@ function renderTable() {
    - filters: optional object { idMin, idMax, fromDate, toDate }
    Renders 2x2 cards per page, draws tiled cards and then adds dotted cut guides on every page.
 */
-function generatePdfReport(data, filters) {
+async function generatePdfReport(data, filters) {
   if (!window.jspdf || !window.jspdf.jsPDF) {
     alert('PDF library not loaded.');
     return;
@@ -510,9 +556,13 @@ function generatePdfReport(data, filters) {
 
   const ids = Object.keys(grouped).map(Number).sort((a, b) => a - b);
 
-  // render cards (may add pages)
-  ids.forEach((id, idx) => {
-    if (idx > 0 && idx % cardsPerPage === 0) doc.addPage();
+  // render cards (may add pages) – sequential with await so images finish before save
+  for (let idx = 0; idx < ids.length; idx++) {
+    const id = ids[idx];
+
+    if (idx > 0 && idx % cardsPerPage === 0) {
+      doc.addPage();
+    }
 
     const slot = idx % cardsPerPage;
     const col = slot % cols;
@@ -530,8 +580,9 @@ function generatePdfReport(data, filters) {
       const dt = r.date || '';
       if (!datesMap[dt]) datesMap[dt] = { AM: null, PM: null };
       const s = r.session === 'AM' ? 'AM' : (r.session === 'PM' ? 'PM' : '');
-      if (s === 'AM' || s === 'PM') datesMap[dt][s] = r;
-      else {
+      if (s === 'AM' || s === 'PM') {
+        datesMap[dt][s] = r;
+      } else {
         if (!datesMap[dt].AM) datesMap[dt].AM = r;
         else if (!datesMap[dt].PM) datesMap[dt].PM = r;
       }
@@ -547,8 +598,8 @@ function generatePdfReport(data, filters) {
       dateKeys = Object.keys(datesMap).filter(Boolean).sort();
     }
 
-    drawCardWithExplicitCols(doc, x0, y0, cardW, cardH, id, dateKeys, datesMap, filters || {});
-  });
+    await drawCardWithExplicitCols(doc, x0, y0, cardW, cardH, id, dateKeys, datesMap, filters || {});
+  }
 
   // ---------------------------
   // Draw dotted cut guides on EVERY page (no scissors)
@@ -585,8 +636,9 @@ function generatePdfReport(data, filters) {
 /* ------------- drawCardWithExplicitCols -------------
    Draws the card (single user report) at given x,y with width w and height h.
    Uses explicit column widths and renders header, 16 rows, totals and final amount.
+   Now also draws user image based on ID (Image1.jpg, Image2.jpg, ...).
 */
-function drawCardWithExplicitCols(doc, x, y, w, h, id, dateKeys, datesMap, filters = {}) {
+async function drawCardWithExplicitCols(doc, x, y, w, h, id, dateKeys, datesMap, filters = {}) {
   const pad = 4;
 
   // outer border (thin)
@@ -594,9 +646,10 @@ function drawCardWithExplicitCols(doc, x, y, w, h, id, dateKeys, datesMap, filte
   doc.rect(x, y, w, h);
   doc.setLineWidth(0.2);    // restore thin inner grid lines
 
-  const headerH = 18;
+  // Slightly taller header to fit image + dates
+  const headerH = 24;
   const subHeaderH = 12;
-  const footerH = 30;
+  const footerH = 22;
   const tableTop = y + headerH + subHeaderH;
   const tableBottom = y + h - footerH;
 
@@ -605,25 +658,39 @@ function drawCardWithExplicitCols(doc, x, y, w, h, id, dateKeys, datesMap, filte
   const minDate = filters.fromDate || (allDates[0] || '');
   const maxDate = filters.toDate || (allDates[allDates.length - 1] || '');
 
-  doc.setFontSize(11);
-  doc.setFont(undefined, 'bold');
+  // ----- IMAGE + HEADER -----
+  // Load image for this ID (Image1.jpg, Image2.jpg, etc.)
+  const imgPath = getUserImagePath(id);
+  const imgData = await loadImageAsDataUrl(imgPath);
 
-  // Header text (ID and Name)
-  doc.text(`ID: ${id}`, x + pad, y + 6);
-  doc.text(`Name: ${name || '—'}`, x + pad, y + 12, {
-    align: 'left'
-  });
+  // Left side: image (if present)
+  if (imgData) {
+    const imgWidth = 57;   // mm
+    const imgHeight = 20;  // mm
+    const imgX = x + pad;
+    const imgY = y + 2;
+    // Use 'JPEG' – if you use PNGs, change to 'PNG'
+    doc.addImage(imgData, 'JPEG', imgX, imgY, imgWidth, imgHeight);
+  } else {
+    // If you want some fallback text when no image:
+    // doc.setFontSize(9);
+    // doc.text(`ID: ${id}`, x + pad, y + 8);
+    // doc.text(name || '—', x + pad, y + 14);
+  }
 
+  // Right side: From / To dates
   doc.setFont(undefined, 'normal');
   doc.setFontSize(9);
-
-  // Optional From/To dates at top-right of card
-  if (minDate) doc.text(`From: ${displayDateFromISO(minDate)}`, x + w - pad, y + 6, {
-    align: 'right'
-  });
-  if (maxDate) doc.text(`To: ${displayDateFromISO(maxDate)}`, x + w - pad, y + 12, {
-    align: 'right'
-  });
+  if (minDate) {
+    doc.text(`From: ${displayDateFromISO(minDate)}`, x + w - pad, y + 10, {
+      align: 'right'
+    });
+  }
+  if (maxDate) {
+    doc.text(`To: ${displayDateFromISO(maxDate)}`, x + w - pad, y + 16, {
+      align: 'right'
+    });
+  }
 
   // thin separator after header
   doc.line(x, y + headerH, x + w, y + headerH);
@@ -797,8 +864,8 @@ function drawCardWithExplicitCols(doc, x, y, w, h, id, dateKeys, datesMap, filte
   doc.line(x, footerTop, x + w, footerTop);
 
   doc.setFontSize(9);
-  const totalsRight = x + w - pad - 4;
-  const totalsLeft = x + pad + 2;
+  const totalsRight = x + w - pad;
+  const totalsLeft = x + pad;
   const totalsCenter = (totalsLeft + totalsRight) / 2;
 
   doc.setFont(undefined, 'normal');
@@ -850,7 +917,7 @@ document.addEventListener('drop', (e) => {
  * Generate button: validate filters, apply them to rows, and generate PDF.
  * Resets filter inputs after generation.
  */
-btnGenerateReport.addEventListener('click', () => {
+btnGenerateReport.addEventListener('click', async () => {
   if (!rows.length) {
     alert('No data loaded. Please upload a file first.');
     return;
@@ -908,7 +975,7 @@ btnGenerateReport.addEventListener('click', () => {
     return;
   }
 
-  generatePdfReport(filtered, {
+  await generatePdfReport(filtered, {
     idMin,
     idMax,
     fromDate,
@@ -926,3 +993,4 @@ btnGenerateReport.addEventListener('click', () => {
    Initial rendering
    ------------------------- */
 renderTable();
+
