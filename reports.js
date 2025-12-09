@@ -88,6 +88,40 @@ function loadImageAsDataUrl(path) {
   });
 }
 
+// ---------------- HEADER IMAGES ----------------
+// Adjust filenames if your images use different names or extensions.
+const HEADER_IMAGE_PATHS = {
+  date:       'Images/Date.jpg',
+  quantity:   'Images/Quantity.jpg',
+  percentage: 'Images/Percentage.jpg',
+  amount:     'Images/Amount.jpg'
+};
+
+// ---------------- FOOTER IMAGES ----------------
+// Adjust filenames if your images use different names or extensions.
+const FOOTER_IMAGE_PATHS = {
+  total:    'Images/tAmount.jpg',
+  recovery: 'Images/recovery.jpg',
+  final:    'Images/fAmount.jpg'
+};
+
+/**
+ * preloadHeaderImages
+ * -------------------
+ * Loads all header images (DATE / QTY / PCT / AMOUNT) as data URLs.
+ * If any image cannot be loaded, its value will be null.
+ */
+async function preloadHeaderImages() {
+  const result = {};
+  for (const [key, path] of Object.entries(HEADER_IMAGE_PATHS)) {
+    result[key] = await loadImageAsDataUrl(path);
+  }
+  return result;
+}
+
+
+
+
 /* -------------------------
    Application data
    ------------------------- */
@@ -522,6 +556,7 @@ function renderTable() {
    - filters: optional object { idMin, idMax, fromDate, toDate }
    Renders 2x2 cards per page, draws tiled cards and then adds dotted cut guides on every page.
 */
+
 async function generatePdfReport(data, filters) {
   if (!window.jspdf || !window.jspdf.jsPDF) {
     alert('PDF library not loaded.');
@@ -534,17 +569,24 @@ async function generatePdfReport(data, filters) {
   const pageH = doc.internal.pageSize.getHeight();
   const margin = 6;
 
-  // spacing between cards (adjust as needed)
-  const gapX = 8; // horizontal gap between cards
-  const gapY = 8; // vertical gap between cards
+  const gapX = 8;
+  const gapY = 8;
 
   const cols = 2;
   const rowsPerPage = 2;
   const cardsPerPage = cols * rowsPerPage;
 
-  // card size reduced to account for gaps
   const cardW = ((pageW - margin * 2) - gapX) / cols;
   const cardH = ((pageH - margin * 2) - gapY) / rowsPerPage;
+
+  // ---- NEW: preload header images once ----
+  const headerImages = await preloadHeaderImages();
+  
+  // ---- NEW: preload footer images ----
+	const footerImages = {};
+	for (const [k, p] of Object.entries(FOOTER_IMAGE_PATHS)) {
+	  footerImages[k] = await loadImageAsDataUrl(p);
+	}
 
   // group rows by ID
   const grouped = {};
@@ -556,7 +598,7 @@ async function generatePdfReport(data, filters) {
 
   const ids = Object.keys(grouped).map(Number).sort((a, b) => a - b);
 
-  // render cards (may add pages) – sequential with await so images finish before save
+  // render cards (may add pages)
   for (let idx = 0; idx < ids.length; idx++) {
     const id = ids[idx];
 
@@ -568,7 +610,6 @@ async function generatePdfReport(data, filters) {
     const col = slot % cols;
     const rowIdx = Math.floor(slot / cols);
 
-    // position accounts for gap spacing
     const x0 = margin + col * (cardW + gapX);
     const y0 = margin + rowIdx * (cardH + gapY);
 
@@ -588,57 +629,57 @@ async function generatePdfReport(data, filters) {
       }
     });
 
-    // full date range for the selected half-month
     let dateKeys;
     if (filters && filters.fromDate && filters.toDate) {
-      // Full continuous range, e.g., 1–15 or 16–30/31
       dateKeys = buildDateRangeISO(filters.fromDate, filters.toDate);
     } else {
-      // Fallback: just use existing dates
       dateKeys = Object.keys(datesMap).filter(Boolean).sort();
     }
 
-    await drawCardWithExplicitCols(doc, x0, y0, cardW, cardH, id, dateKeys, datesMap, filters || {});
+    // ---- pass headerImages into card renderer (NEW param) ----
+    /*await drawCardWithExplicitCols(
+      doc, x0, y0, cardW, cardH,
+      id, dateKeys, datesMap,
+      filters || {},
+      headerImages
+    );*/
+	// ---- pass headerImages and footerImages into card renderer (NEW param) ----
+	await drawCardWithExplicitCols(doc, x0, y0, cardW, cardH, id, dateKeys, datesMap, filters || {}, headerImages, footerImages);
+
   }
 
-  // ---------------------------
-  // Draw dotted cut guides on EVERY page (no scissors)
-  // Ensures dashed style is set per page so jsPDF doesn't accidentally render solid lines.
-  // ---------------------------
   const totalPages = typeof doc.getNumberOfPages === 'function'
     ? doc.getNumberOfPages()
     : (doc.internal && typeof doc.internal.getNumberOfPages === 'function' ? doc.internal.getNumberOfPages() : 1);
 
-  // compute cut line positions (centered inside the gap between cards)
   const cutX = margin + cardW + gapX / 2;
   const cutY = margin + cardH + gapY / 2;
 
   for (let p = 1; p <= totalPages; p++) {
     doc.setPage(p);
-
-    // apply dashed stroke for this page explicitly
-    doc.setLineDash([1.5, 2]); // dash/gap in mm (tweak to taste)
+    doc.setLineDash([1.5, 2]);
     doc.setLineWidth(0.2);
-
-    // vertical dotted line (full height between margins)
     doc.line(cutX, margin, cutX, pageH - margin);
-
-    // horizontal dotted line (full width between margins)
     doc.line(margin, cutY, pageW - margin, cutY);
-
-    // reset dash so subsequent drawing uses solid strokes
     doc.setLineDash([]);
   }
 
-  doc.save('report.pdf');
+  const now = new Date();
+  const timestamp = now.toISOString().replace(/[:]/g, '-').replace('T', '_').split('.')[0];
+  const fileName = `report_${timestamp}.pdf`;
+  doc.save(fileName);
 }
+
 
 /* ------------- drawCardWithExplicitCols -------------
    Draws the card (single user report) at given x,y with width w and height h.
    Uses explicit column widths and renders header, 16 rows, totals and final amount.
    Now also draws user image based on ID (Image1.jpg, Image2.jpg, ...).
 */
-async function drawCardWithExplicitCols(doc, x, y, w, h, id, dateKeys, datesMap, filters = {}) {
+//async function drawCardWithExplicitCols(doc, x, y, w, h, id, dateKeys, datesMap, filters = {}) {
+//async function drawCardWithExplicitCols(doc, x, y, w, h, id, dateKeys, datesMap, filters = {}, headerImages = null) {
+  async function drawCardWithExplicitCols(doc, x, y, w, h, id, dateKeys, datesMap, filters = {}, headerImages = null, footerImages = null) {
+
   const pad = 4;
 
   // outer border (thin)
@@ -647,8 +688,8 @@ async function drawCardWithExplicitCols(doc, x, y, w, h, id, dateKeys, datesMap,
   doc.setLineWidth(0.2);    // restore thin inner grid lines
 
   // Slightly taller header to fit image + dates
-  const headerH = 24;
-  const subHeaderH = 12;
+  const headerH = 20;
+  const subHeaderH = 14;
   const footerH = 22;
   const tableTop = y + headerH + subHeaderH;
   const tableBottom = y + h - footerH;
@@ -665,10 +706,10 @@ async function drawCardWithExplicitCols(doc, x, y, w, h, id, dateKeys, datesMap,
 
   // Left side: image (if present)
   if (imgData) {
-    const imgWidth = 57;   // mm
-    const imgHeight = 20;  // mm
+    const imgWidth = 52;   // mm
+    const imgHeight = 16	;  // mm
     const imgX = x + pad;
-    const imgY = y + 2;
+    const imgY = y + 1;
     // Use 'JPEG' – if you use PNGs, change to 'PNG'
     doc.addImage(imgData, 'JPEG', imgX, imgY, imgWidth, imgHeight);
   } else {
@@ -682,12 +723,12 @@ async function drawCardWithExplicitCols(doc, x, y, w, h, id, dateKeys, datesMap,
   doc.setFont(undefined, 'normal');
   doc.setFontSize(9);
   if (minDate) {
-    doc.text(`From: ${displayDateFromISO(minDate)}`, x + w - pad, y + 10, {
+    doc.text(`From: ${displayDateFromISO(minDate)}`, x + w - pad, y + 6, {
       align: 'right'
     });
   }
   if (maxDate) {
-    doc.text(`To: ${displayDateFromISO(maxDate)}`, x + w - pad, y + 16, {
+    doc.text(`To: ${displayDateFromISO(maxDate)}`, x + w - pad, y + 12, {
       align: 'right'
     });
   }
@@ -780,14 +821,50 @@ async function drawCardWithExplicitCols(doc, x, y, w, h, id, dateKeys, datesMap,
     }
   }
 
-  // header labels
-  drawWrappedCentered('DATE', pos[0], pos[1], hdrTop, hdrSub);
-  drawWrappedCentered('Quantity', pos[1], pos[2], hdrTop, hdrSub);
-  drawWrappedCentered('Percentage', pos[2], pos[3], hdrTop, hdrSub);
-  drawWrappedCentered('Amount', pos[3], pos[4], hdrTop, hdrSub);
-  drawWrappedCentered('Quantity', pos[4], pos[5], hdrTop, hdrSub);
-  drawWrappedCentered('Percentage', pos[5], pos[6], hdrTop, hdrSub);
-  drawWrappedCentered('Amount', pos[6], pos[7], hdrTop, hdrSub);
+    /**
+   * drawHeaderImageOrText
+   * ---------------------
+   * Renders an image in the header cell if available,
+   * otherwise falls back to centered text.
+   *
+   * key: 'date' | 'quantity' | 'percentage' | 'amount'
+   */
+  function drawHeaderImageOrText(key, left, right, top, bottom, fallbackText) {
+    const imgData = headerImages && headerImages[key];
+    if (imgData) {
+      const boxW = right - left;
+      const boxH = bottom - top;
+      const padImg = 1;
+
+	  // Keep width full, reduce height ratio (adjust 0.55 to any value you prefer)
+	  const wImg = boxW - padImg * 2;
+	  const hImg = (boxH * 0.75);   // Try 0.50, 0.45, etc. if you want smaller
+
+      const xImg = left + (boxW - wImg) / 2;
+      const yImg = top + (boxH - hImg) / 2;
+
+      // Use PNG here – change to 'JPEG' if your images are jpg/jpeg
+      doc.addImage(imgData, 'PNG', xImg, yImg, wImg, hImg);
+    } else {
+      // If image missing, use text as before
+      drawWrappedCentered(fallbackText, left, right, top, bottom);
+    }
+  }
+
+  // header labels (with images)
+  drawHeaderImageOrText('date',       pos[0], pos[1], hdrTop, hdrSub, 'DATE');
+
+  // AM columns
+  drawHeaderImageOrText('quantity',   pos[1], pos[2], hdrTop, hdrSub, 'Quantity');
+  drawHeaderImageOrText('percentage', pos[2], pos[3], hdrTop, hdrSub, 'Percentage');
+  drawHeaderImageOrText('amount',     pos[3], pos[4], hdrTop, hdrSub, 'Amount');
+
+  // PM columns (re-use same images)
+  drawHeaderImageOrText('quantity',   pos[4], pos[5], hdrTop, hdrSub, 'Quantity');
+  drawHeaderImageOrText('percentage', pos[5], pos[6], hdrTop, hdrSub, 'Percentage');
+  drawHeaderImageOrText('amount',     pos[6], pos[7], hdrTop, hdrSub, 'Amount');
+
+
 
   // body rows
   doc.setFont(undefined, 'normal');
@@ -858,38 +935,172 @@ async function drawCardWithExplicitCols(doc, x, y, w, h, id, dateKeys, datesMap,
     doc.line(innerX, cursorY, innerX + innerW, cursorY);
   }
 
-  // footer totals
-  const footerTop = tableBottom;
-  doc.setLineWidth(0.25);
-  doc.line(x, footerTop, x + w, footerTop);
 
-  doc.setFontSize(9);
-  const totalsRight = x + w - pad;
-  const totalsLeft = x + pad;
-  const totalsCenter = (totalsLeft + totalsRight) / 2;
+/*
+   // --------- FOOTER GRID (3 rows: Total Amount, Recovery, Final Amount) ---------
+  const footerTop = tableBottom;
+  const footerBottom = y + h;
+  const footerHeight = footerBottom - footerTop;
+
+  // Row height proportions (as requested)
+  const rowHeights = [
+    footerHeight * 0.25,  // row 0: Total Amount
+    footerHeight * 0.25,  // row 1: Recovery
+    footerHeight * 0.50   // row 2: Final Amount
+  ];
+
+  // Draw outer border
+  doc.setLineWidth(0.20);
+  doc.rect(x, footerTop, w, footerHeight);
+
+  // Middle vertical divider (splits into 2 columns)
+  const footerMidX = x + w / 2;
+  doc.line(footerMidX, footerTop, footerMidX, footerBottom);
+
+  // Draw horizontal separators and track Y positions
+  let yCursor = footerTop;
+  const rowTops = [];
+  for (let i = 0; i < rowHeights.length; i++) {
+    rowTops[i] = yCursor;
+    yCursor += rowHeights[i];
+    if (i < rowHeights.length - 1) {
+      doc.line(x, yCursor, x + w, yCursor);
+    }
+  }
+
+  // Text alignment positions
+  const labelX = x + pad;         // left aligned labels
+  const valueX = x + w - pad;     // right aligned values
+
+  // Vertical alignment helper (moves text baseline lower than true center for visual centering)
+  function rowTextY(rowIndex) {
+    return rowTops[rowIndex] + rowHeights[rowIndex] * 0.63;
+  }
+
+  // ---------------- TEXT CONTENT ----------------
 
   doc.setFont(undefined, 'normal');
+  doc.setFontSize(8);
 
-  doc.text(`Total Milk in liters: ${(Math.round(totalQty * 10) / 10).toFixed(1)}`, totalsLeft, footerTop + 5, {
-    align: 'left'
-  });
-  doc.text(`Total Amount: ${fmtAmtWithSep(totalAmt)}`, totalsLeft, footerTop + 10, {
-    align: 'left'
-  });
+  // Row 0 — Total Amount
+  doc.text('Total Amount:', labelX, rowTextY(0), { align: 'left' });
+  doc.text(fmtAmtWithSep(totalAmt), valueX, rowTextY(0), { align: 'right' });
 
+  // Row 1 — Recovery
+  doc.text('Recovery:', labelX, rowTextY(1), { align: 'left' });
   doc.setTextColor(255, 0, 0);
-  doc.text(`Recovery: 0`, totalsRight, footerTop + 5, {
-    align: 'right'
-  });
+  doc.text('0', valueX, rowTextY(1), { align: 'right' });
   doc.setTextColor(0, 0, 0);
 
-  doc.setFontSize(15);
+  // Row 2 — Final Amount (larger + bold)
+  doc.setFontSize(12);
   doc.setFont(undefined, 'bold');
-  doc.text(`Final Amount: ${fmtFinalAmt(totalAmt)}`, totalsCenter, footerTop + 20, {
-    align: 'center'
-  });
+  doc.text('Final Amount:', labelX, rowTextY(2), { align: 'left' });
+  doc.text(fmtFinalAmt(totalAmt), valueX, rowTextY(2), { align: 'right' });
 
+  // Reset formatting for next drawing
   doc.setFont(undefined, 'normal');
+  doc.setFontSize(9);
+*/
+  // --------- FOOTER GRID (3 rows: Total Amount, Recovery, Final Amount) ---------
+  const footerTop = tableBottom;
+  const footerBottom = y + h;
+  const footerHeight = footerBottom - footerTop;
+
+  // Row height proportions
+  const rowHeights = [
+    footerHeight * 0.30,  // row 0: Total Amount
+    footerHeight * 0.30,  // row 1: Recovery
+    footerHeight * 0.40   // row 2: Final Amount
+  ];
+
+  // Outer border
+  doc.setLineWidth(0.20);
+  doc.rect(x, footerTop, w, footerHeight);
+
+  // Middle vertical divider (2 columns)
+  const footerMidX = x + w / 2;
+  doc.line(footerMidX, footerTop, footerMidX, footerBottom);
+
+  // Horizontal separators & row tops
+  let yCursor = footerTop;
+  const rowTops = [];
+  for (let i = 0; i < rowHeights.length; i++) {
+    rowTops[i] = yCursor;
+    yCursor += rowHeights[i];
+    if (i < rowHeights.length - 1) {
+      doc.line(x, yCursor, x + w, yCursor);
+    }
+  }
+
+  // Column positions
+  const labelColLeft  = x;
+  const labelColRight = footerMidX;
+  const valueX        = x + w - pad;  // right-aligned values
+
+  // Vertical baseline (slightly below true center for better look)
+  function rowTextY(rowIndex) {
+    return rowTops[rowIndex] + rowHeights[rowIndex] * 0.63;
+  }
+
+  // Helper to draw footer images in left column cells
+  function drawFooterImage(imgKey, rowIndex) {
+    const imgData = footerImages && footerImages[imgKey];
+    if (!imgData) return;
+
+    const boxW = labelColRight - labelColLeft;
+    const boxH = rowHeights[rowIndex];
+
+    const padImgX = 1.5;
+    const padImgY = 1.0;
+
+    const wImg = boxW - padImgX * 2;      // almost full width of left cell
+    const hImg = boxH - padImgY * 2;      // almost full height of left cell
+
+    //const xImg = labelColLeft + (boxW - wImg) / 2; 	//To align center
+	const xImg = labelColRight - wImg - padImgX;	//To align right
+	//const xImg = labelColLeft + padImgX;			//To align left
+    const yImg = rowTops[rowIndex] + (boxH - hImg) / 2;
+
+    // Images are JPGs
+    doc.addImage(imgData, 'JPEG', xImg, yImg, wImg, hImg);
+  }
+
+  // ---------------- TEXT CONTENT ----------------
+  doc.setFont(undefined, 'normal');
+  doc.setFontSize(8);
+  
+  const valueCenterX = footerMidX + (w / 4);
+  
+  // Row 0 — Total Amount
+  drawFooterImage('total', 0);
+  //doc.text(fmtAmtWithSep(totalAmt), valueX, rowTextY(0), { align: 'right' });
+  doc.text(fmtAmtWithSep(totalAmt), valueCenterX, rowTextY(0), { align: 'center' });
+  
+  /* doc.text(textString, valueX, yPos, { align: "right" });	// text align to right
+  const valueCenterX = footerMidX + (w / 4); 				// text align to center 
+  doc.text(textString, valueCenterX, yPos, { align: "center" });
+  const valueLeftX = footerMidX + pad;						// text align to left
+  doc.text(textString, valueLeftX, yPos, { align: "left" }); */
+
+  // Row 1 — Recovery
+  drawFooterImage('recovery', 1);
+  doc.setTextColor(255, 0, 0);
+  //doc.text('0', valueX, rowTextY(1), { align: 'right' });
+  doc.text('0', valueCenterX, rowTextY(1), { align: 'center' });
+  doc.setTextColor(0, 0, 0);
+
+  // Row 2 — Final Amount (larger + bold)
+  drawFooterImage('final', 2);
+  doc.setFontSize(12);
+  doc.setFont(undefined, 'bold');
+  //doc.text(fmtFinalAmt(totalAmt), valueX, rowTextY(2), { align: 'right' });
+  doc.text(fmtFinalAmt(totalAmt), valueCenterX, rowTextY(2), { align: 'center' });
+
+  // Reset formatting
+  doc.setFont(undefined, 'normal');
+  doc.setFontSize(9);
+
 }
 
 /* --------- Events --------- */
