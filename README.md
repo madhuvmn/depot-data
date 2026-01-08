@@ -1,3 +1,4 @@
+```mermaid
 flowchart TD
     A[Milk Depot Management System]
 
@@ -55,3 +56,4 @@ flowchart TD
     E --> E2[.env]
     E --> E3[README.md]
     E --> E4[.gitignore]
+ ```
